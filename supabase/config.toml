@@ -1,1 +1,4 @@
 project_id = "qziltegbxmsmnsifuast"
+
+[functions.post-signin]
+verify_jwt = true

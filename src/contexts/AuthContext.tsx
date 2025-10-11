@@ -26,9 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Handle navigation after auth state changes
+        // Handle post-signin and navigation after auth state changes
         if (event === 'SIGNED_IN' && session) {
-          setTimeout(() => {
+          setTimeout(async () => {
+            try {
+              await supabase.functions.invoke('post-signin');
+            } catch (error) {
+              console.error('Post-signin error:', error);
+            }
             navigate('/app/dashboard');
           }, 0);
         }
