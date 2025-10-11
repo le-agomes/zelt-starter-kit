@@ -28,12 +28,17 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Get the authenticated user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
     if (userError || !user) {
       console.error('Auth error:', userError);
-      throw new Error('User not authenticated');
+      return new Response(
+        JSON.stringify({ error: 'not_authenticated' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     console.log('Processing post-signin for user:', user.id);
@@ -50,12 +55,24 @@ Deno.serve(async (req) => {
       throw profileCheckError;
     }
 
-    // If profile exists, return it
+    // If profile exists, return it with org
     if (existingProfile) {
       console.log('Profile exists, returning:', existingProfile.id);
       return new Response(
-        JSON.stringify({ profile: existingProfile }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          org: existingProfile.organizations,
+          profile: {
+            id: existingProfile.id,
+            full_name: existingProfile.full_name,
+            org_id: existingProfile.org_id,
+            role: existingProfile.role,
+            created_at: existingProfile.created_at
+          }
+        }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
@@ -90,7 +107,7 @@ Deno.serve(async (req) => {
         role: 'admin',
         full_name: user.email || 'User',
       })
-      .select('*, organizations(*)')
+      .select()
       .single();
 
     if (profileError || !newProfile) {
@@ -101,8 +118,14 @@ Deno.serve(async (req) => {
     console.log('Created profile:', newProfile.id);
 
     return new Response(
-      JSON.stringify({ profile: newProfile }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        org: newOrg,
+        profile: newProfile
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error) {
