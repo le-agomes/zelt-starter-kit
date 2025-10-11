@@ -9,6 +9,8 @@ import { TopNav } from "./components/TopNav";
 import { BottomNav } from "./components/BottomNav";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import Employees from "./pages/Employees";
+import EmployeeDetail from "./pages/EmployeeDetail";
 import SignIn from "./pages/SignIn";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +33,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/employees"
+                element={
+                  <ProtectedRoute>
+                    <Employees />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/app/employees/:id"
+                element={
+                  <ProtectedRoute>
+                    <EmployeeDetail />
                   </ProtectedRoute>
                 }
               />
