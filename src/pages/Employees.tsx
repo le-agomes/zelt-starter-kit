@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
+import { NewEmployeeDialog } from '@/components/NewEmployeeDialog';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -18,7 +19,9 @@ type Employee = {
   email: string;
   job_title: string | null;
   department: string | null;
-  status: 'active' | 'inactive' | 'on_leave';
+  location: string | null;
+  start_date: string | null;
+  status: 'candidate' | 'onboarding' | 'active' | 'inactive' | 'on_leave' | 'offboarded';
   created_at: string;
 };
 
@@ -32,12 +35,18 @@ const getInitials = (name: string) => {
 
 const getStatusLabel = (status: string) => {
   switch (status) {
+    case 'candidate':
+      return 'Candidate';
+    case 'onboarding':
+      return 'Onboarding';
     case 'active':
       return 'Active';
     case 'inactive':
       return 'Inactive';
     case 'on_leave':
       return 'On Leave';
+    case 'offboarded':
+      return 'Offboarded';
     default:
       return status;
   }
@@ -118,8 +127,13 @@ export default function Employees() {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="container max-w-2xl px-4 py-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Employees</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your team members</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Employees</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage your team members</p>
+            </div>
+            <NewEmployeeDialog />
+          </div>
         </div>
       </div>
 
@@ -150,9 +164,12 @@ export default function Employees() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="candidate">Candidate</SelectItem>
+                <SelectItem value="onboarding">Onboarding</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="on_leave">On Leave</SelectItem>
+                <SelectItem value="offboarded">Offboarded</SelectItem>
               </SelectContent>
             </Select>
           </div>

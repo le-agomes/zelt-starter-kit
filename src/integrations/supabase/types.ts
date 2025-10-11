@@ -22,7 +22,9 @@ export type Database = {
           full_name: string
           id: string
           job_title: string | null
+          location: string | null
           org_id: string
+          start_date: string | null
           status: Database["public"]["Enums"]["employee_status"]
           updated_at: string
         }
@@ -33,7 +35,9 @@ export type Database = {
           full_name: string
           id?: string
           job_title?: string | null
+          location?: string | null
           org_id: string
+          start_date?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
         }
@@ -44,7 +48,9 @@ export type Database = {
           full_name?: string
           id?: string
           job_title?: string | null
+          location?: string | null
           org_id?: string
+          start_date?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
         }
@@ -119,7 +125,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      employee_status: "active" | "inactive" | "on_leave"
+      employee_status:
+        | "active"
+        | "inactive"
+        | "on_leave"
+        | "candidate"
+        | "onboarding"
+        | "offboarded"
       user_role: "admin" | "hr" | "manager" | "it" | "employee"
     }
     CompositeTypes: {
@@ -248,7 +260,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      employee_status: ["active", "inactive", "on_leave"],
+      employee_status: [
+        "active",
+        "inactive",
+        "on_leave",
+        "candidate",
+        "onboarding",
+        "offboarded",
+      ],
       user_role: ["admin", "hr", "manager", "it", "employee"],
     },
   },
