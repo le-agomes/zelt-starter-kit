@@ -16,51 +16,53 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <div className="min-h-screen bg-background">
-            <TopNav />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/auth/sign-in" element={<SignIn />} />
-              <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
-              <Route
-                path="/app/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/employees"
-                element={
-                  <ProtectedRoute>
-                    <Employees />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/app/employees/:id"
-                element={
-                  <ProtectedRoute>
-                    <EmployeeDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <BottomNav />
-          </div>
-        </AuthProvider>
-      </TooltipProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <div className="min-h-screen bg-background">
+              <TopNav />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/auth/sign-in" element={<SignIn />} />
+                <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
+                <Route
+                  path="/app/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/employees"
+                  element={
+                    <ProtectedRoute>
+                      <Employees />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/employees/:id"
+                  element={
+                    <ProtectedRoute>
+                      <EmployeeDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <BottomNav />
+            </div>
+          </AuthProvider>
+        </TooltipProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
