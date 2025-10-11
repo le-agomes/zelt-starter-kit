@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      employees: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string
+          full_name: string
+          id: string
+          job_title: string | null
+          org_id: string
+          status: Database["public"]["Enums"]["employee_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email: string
+          full_name: string
+          id?: string
+          job_title?: string | null
+          org_id: string
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          org_id?: string
+          status?: Database["public"]["Enums"]["employee_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string | null
@@ -75,6 +119,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      employee_status: "active" | "inactive" | "on_leave"
       user_role: "admin" | "hr" | "manager" | "it" | "employee"
     }
     CompositeTypes: {
@@ -203,6 +248,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      employee_status: ["active", "inactive", "on_leave"],
       user_role: ["admin", "hr", "manager", "it", "employee"],
     },
   },
