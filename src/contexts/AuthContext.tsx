@@ -1,15 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-interface User {
-  email: string;
-  id: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  session: Session | null;
+  signInWithMagicLink: (email: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -17,34 +15,58 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
-  }, []);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Handle navigation after auth state changes
+        if (event === 'SIGNED_IN' && session) {
+          setTimeout(() => {
+            navigate('/app/dashboard');
+          }, 0);
+        }
+      }
+    );
 
-  const signIn = async (email: string, password: string) => {
-    // Mock authentication - replace with real auth later
-    const mockUser = { email, id: '1' };
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    navigate('/app/dashboard');
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const signInWithMagicLink = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
+    });
+    
+    return { error };
   };
 
-  const signOut = () => {
-    localStorage.removeItem('user');
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
     navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut, isLoading }}>
+    <AuthContext.Provider value={{ user, session, signInWithMagicLink, signOut, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

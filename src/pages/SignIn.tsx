@@ -9,9 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user } = useAuth();
+  const { signInWithMagicLink, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -24,10 +23,10 @@ export default function SignIn() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!email) {
       toast({
         title: 'Error',
-        description: 'Please fill in all fields',
+        description: 'Please enter your email address',
         variant: 'destructive',
       });
       return;
@@ -35,15 +34,25 @@ export default function SignIn() {
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
-      toast({
-        title: 'Success',
-        description: 'Welcome back!',
-      });
+      const { error } = await signInWithMagicLink(email);
+      
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to send magic link',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Check your email!',
+          description: 'We sent you a magic link to sign in.',
+        });
+        setEmail('');
+      }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to sign in. Please try again.',
+        description: 'An unexpected error occurred',
         variant: 'destructive',
       });
     } finally {
@@ -57,7 +66,7 @@ export default function SignIn() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
           <CardDescription>
-            Enter your email and password to access your account
+            Enter your email to receive a magic link
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -74,29 +83,14 @@ export default function SignIn() {
                 className="h-12"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-12"
-              />
-            </div>
             <Button
               type="submit"
               className="h-12 w-full"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? 'Sending...' : 'Send magic link'}
             </Button>
           </form>
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Demo: use any email/password to sign in
-          </p>
         </CardContent>
       </Card>
     </div>
