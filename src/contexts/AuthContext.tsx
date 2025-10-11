@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Handle post-signin and navigation after auth state changes
+        // Handle post-signin logic
         if (event === 'SIGNED_IN' && session) {
           setTimeout(async () => {
             try {
@@ -34,7 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } catch (error) {
               console.error('Post-signin error:', error);
             }
-            navigate('/app/dashboard');
+            
+            // Only navigate if on public routes
+            const currentPath = window.location.pathname;
+            if (currentPath === '/' || currentPath.startsWith('/auth')) {
+              navigate('/app/dashboard');
+            }
           }, 0);
         }
       }
