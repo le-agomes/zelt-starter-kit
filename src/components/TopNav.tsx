@@ -35,10 +35,10 @@ export function TopNav() {
                 Employees
               </Link>
               <Link
-                to="/app/templates"
+                to="/app/workflows"
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                Templates
+                Workflows
               </Link>
             </>
           )}

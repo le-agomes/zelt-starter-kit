@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { to: '/app/dashboard', icon: Home, label: 'Home' },
   { to: '/app/employees', icon: Users, label: 'Employees' },
-  { to: '/app/templates', icon: FileText, label: 'Templates' },
+  { to: '/app/workflows', icon: FileText, label: 'Workflows' },
 ];
 
 export function BottomNav() {
