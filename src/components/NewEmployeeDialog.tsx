@@ -122,9 +122,22 @@ export function NewEmployeeDialog() {
       }
     } catch (error: any) {
       console.error('Error creating employee:', error);
+      console.error('Error code:', error?.code);
+      console.error('Error message:', error?.message);
+      console.error('Error details:', error?.details);
+      console.error('Error hint:', error?.hint);
       
       // Check for duplicate email error (Postgres error code 23505)
-      if (error?.code === '23505' && error?.message?.includes('employees_org_id_email_key')) {
+      // Check multiple possible locations for the error code and constraint name
+      const isDuplicateEmail = 
+        (error?.code === '23505' || error?.code === 23505) && 
+        (
+          error?.message?.includes('employees_org_id_email_key') ||
+          error?.details?.includes('employees_org_id_email_key') ||
+          error?.hint?.includes('employees_org_id_email_key')
+        );
+      
+      if (isDuplicateEmail) {
         toast({
           title: 'Duplicate Email',
           description: 'An employee with this email already exists in your organization.',
