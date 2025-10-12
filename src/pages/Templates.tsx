@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { NewTemplateDialog } from '@/components/NewTemplateDialog';
 
 interface Template {
   id: string;
@@ -50,12 +51,7 @@ export default function Templates() {
       <PageHeader
         title="Templates"
         description="Manage onboarding templates for your team"
-        actions={
-          <Button size="lg" className="gap-2">
-            <Plus className="h-5 w-5" />
-            New Template
-          </Button>
-        }
+        actions={<NewTemplateDialog />}
       />
 
       {/* Search */}
@@ -94,10 +90,7 @@ export default function Templates() {
             <p className="text-3 text-muted-foreground mb-6 max-w-sm">
               Create your first onboarding template to streamline the employee onboarding process.
             </p>
-            <Button size="lg" className="gap-2">
-              <Plus className="h-5 w-5" />
-              Create Your First Template
-            </Button>
+            <NewTemplateDialog />
           </CardContent>
         </Card>
       )}
