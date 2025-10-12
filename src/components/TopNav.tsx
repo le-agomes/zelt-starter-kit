@@ -21,12 +21,26 @@ export function TopNav() {
             Home
           </Link>
           {user && (
-            <Link
-              to="/app/dashboard"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link
+                to="/app/dashboard"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/app/employees"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Employees
+              </Link>
+              <Link
+                to="/app/templates"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Templates
+              </Link>
+            </>
           )}
           {user ? (
             <Button

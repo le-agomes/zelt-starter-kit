@@ -10,6 +10,8 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import EmployeeDetail from "./pages/EmployeeDetail";
+import Templates from "./pages/Templates";
+import TemplateDetail from "./pages/TemplateDetail";
 import SignIn from "./pages/SignIn";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +51,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <EmployeeDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/templates"
+                  element={
+                    <ProtectedRoute>
+                      <Templates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/templates/:id"
+                  element={
+                    <ProtectedRoute>
+                      <TemplateDetail />
                     </ProtectedRoute>
                   }
                 />

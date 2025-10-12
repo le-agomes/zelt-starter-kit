@@ -1,11 +1,11 @@
-import { Home, LayoutDashboard, User } from 'lucide-react';
+import { Home, LayoutDashboard, Users, FileText } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/auth/sign-in', icon: User, label: 'Account' },
+  { to: '/app/dashboard', icon: Home, label: 'Home' },
+  { to: '/app/employees', icon: Users, label: 'Employees' },
+  { to: '/app/templates', icon: FileText, label: 'Templates' },
 ];
 
 export function BottomNav() {
