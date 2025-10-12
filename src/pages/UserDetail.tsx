@@ -9,21 +9,41 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PageContent } from '@/components/PageContent';
 import {
   ArrowLeft,
   Mail,
   Shield,
   User as UserIcon,
+  Plus,
+  X,
 } from 'lucide-react';
+
+type UserRole = 'admin' | 'hr' | 'manager' | 'it' | 'employee';
 
 type User = {
   id: string;
   full_name: string | null;
   email: string | null;
-  role: 'admin' | 'hr' | 'manager' | 'it' | 'employee';
+  role: UserRole;
   active: boolean | null;
+};
+
+type AdditionalRole = {
+  id: string;
+  role: UserRole;
 };
 
 const getInitials = (name: string) => {
@@ -68,26 +88,41 @@ export default function UserDetail() {
   const { toast } = useToast();
   
   const [user, setUser] = useState<User | null>(null);
+  const [additionalRoles, setAdditionalRoles] = useState<AdditionalRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isActive, setIsActive] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showDeactivateWarning, setShowDeactivateWarning] = useState(false);
 
   const fetchUser = async () => {
     if (!id) return;
 
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase as any)
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await (supabase as any)
         .from('profiles')
         .select('id, full_name, email, role, active')
         .eq('id', id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
       
-      if (data) {
-        setUser(data);
-        setIsActive(data.active ?? false);
+      if (profileData) {
+        setUser(profileData);
       }
+
+      // Fetch additional roles
+      const { data: rolesData, error: rolesError } = await (supabase as any)
+        .from('user_roles')
+        .select('id, role')
+        .eq('user_id', id);
+
+      if (rolesError) throw rolesError;
+      
+      // Filter out the primary role from additional roles
+      const filtered = rolesData?.filter((r: AdditionalRole) => r.role !== profileData?.role) || [];
+      setAdditionalRoles(filtered);
+
     } catch (error) {
       console.error('Error fetching user:', error);
       toast({
@@ -103,6 +138,134 @@ export default function UserDetail() {
   useEffect(() => {
     fetchUser();
   }, [id]);
+
+  const handleRoleChange = async (newRole: UserRole) => {
+    if (!user) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.functions.invoke('update-user-profile', {
+        body: { userId: user.id, role: newRole },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'User role updated',
+      });
+
+      await fetchUser();
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update role',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleActiveToggle = async (newActive: boolean) => {
+    if (!user) return;
+
+    if (!newActive) {
+      setShowDeactivateWarning(true);
+      return;
+    }
+
+    await updateActiveStatus(true);
+  };
+
+  const updateActiveStatus = async (newActive: boolean) => {
+    if (!user) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.functions.invoke('update-user-profile', {
+        body: { userId: user.id, active: newActive },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: newActive ? 'User activated' : 'User deactivated',
+      });
+
+      await fetchUser();
+    } catch (error: any) {
+      console.error('Error updating active status:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update status',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+      setShowDeactivateWarning(false);
+    }
+  };
+
+  const handleAddRole = async (roleToAdd: UserRole) => {
+    if (!user) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.functions.invoke('manage-user-roles', {
+        body: { userId: user.id, action: 'add', role: roleToAdd },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Role added',
+      });
+
+      await fetchUser();
+    } catch (error: any) {
+      console.error('Error adding role:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add role',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRemoveRole = async (roleId: string, role: UserRole) => {
+    if (!user) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.functions.invoke('manage-user-roles', {
+        body: { userId: user.id, action: 'remove', role },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Role removed',
+      });
+
+      await fetchUser();
+    } catch (error: any) {
+      console.error('Error removing role:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to remove role',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -158,16 +321,17 @@ export default function UserDetail() {
   }
 
   return (
-    <PageContent className="max-w-2xl">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate('/app/users')}
-        className="-ml-2"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
-      </Button>
+    <>
+      <PageContent className="max-w-2xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/app/users')}
+          className="-ml-2"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
       {/* Profile Card */}
       <Card className="border-border">
@@ -185,8 +349,8 @@ export default function UserDetail() {
               <Badge variant={getRoleBadgeVariant(user.role)}>
                 {getRoleLabel(user.role)}
               </Badge>
-              <Badge variant={isActive ? 'secondary' : 'outline'}>
-                {isActive ? 'Active' : 'Inactive'}
+              <Badge variant={user.active ? 'secondary' : 'outline'}>
+                {user.active ? 'Active' : 'Inactive'}
               </Badge>
             </div>
           </div>
@@ -206,8 +370,23 @@ export default function UserDetail() {
             <div className="flex items-start gap-3">
               <Shield className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Role</p>
-                <p className="text-sm text-foreground">{getRoleLabel(user.role)}</p>
+                <p className="text-xs text-muted-foreground">Primary Role</p>
+                <Select
+                  value={user.role}
+                  onValueChange={handleRoleChange}
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger className="mt-1 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="employee">Employee</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="hr">HR</SelectItem>
+                    <SelectItem value="it">IT</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -234,18 +413,93 @@ export default function UserDetail() {
                 Account Status
               </Label>
               <p className="text-sm text-muted-foreground">
-                {isActive ? 'User can access the system' : 'User access is disabled'}
+                {user.active ? 'User can access the system' : 'User access is disabled'}
               </p>
             </div>
             <Switch
               id="active-toggle"
-              checked={isActive}
-              onCheckedChange={setIsActive}
+              checked={user.active ?? false}
+              onCheckedChange={handleActiveToggle}
+              disabled={isUpdating}
             />
           </div>
         </CardContent>
       </Card>
 
+      {/* Additional Roles */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-lg">Additional Roles</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {additionalRoles.map((roleItem) => (
+              <Badge
+                key={roleItem.id}
+                variant="outline"
+                className="gap-1 pr-1"
+              >
+                {getRoleLabel(roleItem.role)}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 hover:bg-destructive/20"
+                  onClick={() => handleRemoveRole(roleItem.id, roleItem.role)}
+                  disabled={isUpdating}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            ))}
+            {additionalRoles.length === 0 && (
+              <p className="text-sm text-muted-foreground">No additional roles</p>
+            )}
+          </div>
+
+          <Select
+            onValueChange={(value: UserRole) => handleAddRole(value)}
+            disabled={isUpdating}
+          >
+            <SelectTrigger className="bg-background">
+              <div className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                <span>Add Role</span>
+              </div>
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              <SelectItem value="employee">Employee</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="hr">HR</SelectItem>
+              <SelectItem value="it">IT</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
     </PageContent>
+
+    {/* Deactivate Warning Dialog */}
+    <AlertDialog open={showDeactivateWarning} onOpenChange={setShowDeactivateWarning}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Deactivate User?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <strong className="text-destructive">Warning:</strong> User will be blocked from the app and will not be able to sign in.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isUpdating}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => updateActiveStatus(false)}
+            disabled={isUpdating}
+            className="bg-destructive hover:bg-destructive/90"
+          >
+            {isUpdating ? 'Deactivating...' : 'Deactivate'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }
