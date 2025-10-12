@@ -11,11 +11,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageContent } from '@/components/PageContent';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ArrowLeft,
   Mail,
   Shield,
   User as UserIcon,
+  AlertTriangle,
 } from 'lucide-react';
 
 type User = {
@@ -69,24 +72,36 @@ export default function UserDetail() {
   
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isActive, setIsActive] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchUser = async () => {
     if (!id) return;
 
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase as any)
-        .from('profiles')
-        .select('id, full_name, email, role, active')
-        .eq('id', id)
-        .maybeSingle();
+      // Fetch both the target user and current user's role
+      const [userResult, currentUserResult] = await Promise.all([
+        (supabase as any)
+          .from('profiles')
+          .select('id, full_name, email, role, active')
+          .eq('id', id)
+          .maybeSingle(),
+        (supabase as any)
+          .from('profiles')
+          .select('role')
+          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .single()
+      ]);
 
-      if (error) throw error;
+      if (userResult.error) throw userResult.error;
       
-      if (data) {
-        setUser(data);
-        setIsActive(data.active ?? false);
+      if (userResult.data) {
+        setUser(userResult.data);
+      }
+
+      if (currentUserResult.data) {
+        setCurrentUserRole(currentUserResult.data.role);
       }
     } catch (error) {
       console.error('Error fetching user:', error);
@@ -97,6 +112,74 @@ export default function UserDetail() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (newRole: string) => {
+    if (!user || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { error } = await supabase.functions.invoke('update-user-profile', {
+        body: { userId: user.id, role: newRole }
+      });
+
+      if (error) throw error;
+
+      setUser({ ...user, role: newRole as any });
+      toast({
+        title: 'Success',
+        description: 'User role updated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      const message = error.message?.includes('permission') 
+        ? "You don't have permission to modify users"
+        : 'Failed to update user role';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleActiveChange = async (newActive: boolean) => {
+    if (!user || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { error } = await supabase.functions.invoke('update-user-profile', {
+        body: { userId: user.id, active: newActive }
+      });
+
+      if (error) throw error;
+
+      setUser({ ...user, active: newActive });
+      toast({
+        title: 'Success',
+        description: `User ${newActive ? 'activated' : 'deactivated'} successfully`,
+      });
+    } catch (error: any) {
+      console.error('Error updating active status:', error);
+      const message = error.message?.includes('permission') 
+        ? "You don't have permission to modify users"
+        : 'Failed to update user status';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -185,8 +268,8 @@ export default function UserDetail() {
               <Badge variant={getRoleBadgeVariant(user.role)}>
                 {getRoleLabel(user.role)}
               </Badge>
-              <Badge variant={isActive ? 'secondary' : 'outline'}>
-                {isActive ? 'Active' : 'Inactive'}
+              <Badge variant={user.active ? 'secondary' : 'outline'}>
+                {user.active ? 'Active' : 'Inactive'}
               </Badge>
             </div>
           </div>
@@ -227,21 +310,59 @@ export default function UserDetail() {
         <CardHeader>
           <CardTitle className="text-lg">Account Settings</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="active-toggle" className="text-sm font-medium">
-                Account Status
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                {isActive ? 'User can access the system' : 'User access is disabled'}
-              </p>
+        <CardContent className="space-y-6">
+          {/* Primary Role */}
+          <div className="space-y-2">
+            <Label htmlFor="role-select" className="text-sm font-medium">
+              Primary Role
+            </Label>
+            <Select 
+              value={user.role} 
+              onValueChange={handleRoleChange}
+              disabled={!currentUserRole || (currentUserRole !== 'admin' && currentUserRole !== 'hr') || isSaving}
+            >
+              <SelectTrigger id="role-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Administrator</SelectItem>
+                <SelectItem value="hr">Human Resources</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="it">IT Support</SelectItem>
+                <SelectItem value="employee">Employee</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          {/* Active Status */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="active-toggle" className="text-sm font-medium">
+                  Account Status
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {user.active ? 'User can access the system' : 'User access is disabled'}
+                </p>
+              </div>
+              <Switch
+                id="active-toggle"
+                checked={user.active ?? false}
+                onCheckedChange={handleActiveChange}
+                disabled={!currentUserRole || (currentUserRole !== 'admin' && currentUserRole !== 'hr') || isSaving}
+              />
             </div>
-            <Switch
-              id="active-toggle"
-              checked={isActive}
-              onCheckedChange={setIsActive}
-            />
+            
+            {!user.active && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  User will be blocked from the app
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </CardContent>
       </Card>
