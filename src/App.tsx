@@ -10,6 +10,8 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import EmployeeDetail from "./pages/EmployeeDetail";
+import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
 import Workflows from "./pages/Workflows";
 import WorkflowDetail from "./pages/WorkflowDetail";
 import SignIn from "./pages/SignIn";
@@ -53,6 +55,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <EmployeeDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/users"
+                  element={
+                    <ProtectedRoute>
+                      <Users />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/users/:id"
+                  element={
+                    <ProtectedRoute>
+                      <UserDetail />
                     </ProtectedRoute>
                   }
                 />
