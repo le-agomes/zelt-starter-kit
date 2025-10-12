@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
 import { NewEmployeeDialog } from '@/components/NewEmployeeDialog';
+import { PageContent } from '@/components/PageContent';
+import { PageHeader } from '@/components/PageHeader';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -123,22 +125,15 @@ export default function Employees() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-6">
-      {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="container max-w-2xl px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Employees</h1>
-              <p className="text-sm text-muted-foreground mt-1">Manage your team members</p>
-            </div>
-            <NewEmployeeDialog />
-          </div>
-        </div>
-      </div>
+    <PageContent className="max-w-2xl space-y-4">
+      <PageHeader 
+        title="Employees" 
+        description="Manage your team members"
+        actions={<NewEmployeeDialog />}
+      />
 
       {/* Search and Filters */}
-      <div className="container max-w-2xl px-4 py-4 space-y-3">
+      <div className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -197,8 +192,7 @@ export default function Employees() {
       </div>
 
       {/* Stats Cards */}
-      <div className="container max-w-2xl px-4 pb-4">
-        <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
           <Card className="border-border">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-semibold text-foreground">
@@ -224,10 +218,9 @@ export default function Employees() {
             </CardContent>
           </Card>
         </div>
-      </div>
 
       {/* Employee List */}
-      <div className="container max-w-2xl px-4 pb-4">
+      <div>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -319,6 +312,6 @@ export default function Employees() {
           </>
         )}
       </div>
-    </div>
+    </PageContent>
   );
 }

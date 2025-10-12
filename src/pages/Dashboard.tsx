@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { PageContent } from '@/components/PageContent';
+import { PageHeader } from '@/components/PageHeader';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -46,18 +48,13 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] px-6 py-8 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto max-w-4xl space-y-8">
-        <div>
-          <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Welcome back, {user?.email}
-          </p>
-        </div>
+    <PageContent className="max-w-4xl">
+      <PageHeader 
+        title="Dashboard" 
+        description={`Welcome back, ${user?.email}`}
+      />
 
-        <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Setup</CardTitle>
@@ -132,7 +129,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+    </PageContent>
   );
 }

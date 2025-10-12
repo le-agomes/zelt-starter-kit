@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { EditEmployeeDialog } from '@/components/EditEmployeeDialog';
+import { PageContent } from '@/components/PageContent';
 import {
   ArrowLeft,
   Mail,
@@ -136,23 +137,18 @@ export default function EmployeeDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pb-20 md:pb-6">
-        <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-          <div className="container max-w-2xl px-4 py-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/app/employees')}
-              className="mb-2 -ml-2"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          </div>
-        </div>
+      <PageContent className="max-w-2xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/app/employees')}
+          className="-ml-2"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
-        <div className="container max-w-2xl px-4 py-6 space-y-4">
-          <Card>
+        <Card>
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <Skeleton className="h-24 w-24 rounded-full" />
@@ -174,14 +170,13 @@ export default function EmployeeDetail() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+      </PageContent>
     );
   }
 
   if (!employee) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <PageContent className="flex items-center justify-center min-h-[50vh]">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground">Employee not found</p>
@@ -190,31 +185,25 @@ export default function EmployeeDetail() {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </PageContent>
     );
   }
 
   return (
     <>
-      <div className="min-h-screen bg-background pb-20 md:pb-6">
-        {/* Header */}
-        <div className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-          <div className="container max-w-2xl px-4 py-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/app/employees')}
-              className="mb-2 -ml-2"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          </div>
-        </div>
+      <PageContent className="max-w-2xl">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/app/employees')}
+          className="-ml-2"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
-        <div className="container max-w-2xl px-4 py-6 space-y-4">
-          {/* Profile Card */}
-          <Card className="border-border">
+        {/* Profile Card */}
+        <Card className="border-border">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-24 w-24 border-4 border-border">
@@ -319,8 +308,7 @@ export default function EmployeeDetail() {
               Delete
             </Button>
           </div>
-        </div>
-      </div>
+      </PageContent>
 
       {/* Edit Dialog */}
       {employee && (

@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { PageContent } from '@/components/PageContent';
 
 export default function Home() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-6 py-16 md:min-h-[calc(100vh-4rem)] md:px-8">
+    <PageContent className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center">
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground md:text-6xl">
           Welcome to Your App
@@ -25,6 +26,6 @@ export default function Home() {
           </Button>
         </div>
       </div>
-    </div>
+    </PageContent>
   );
 }
