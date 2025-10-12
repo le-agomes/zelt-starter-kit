@@ -120,13 +120,35 @@ export function NewEmployeeDialog() {
       if (newEmployee) {
         navigate(`/app/employees/${newEmployee.id}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating employee:', error);
+      
+      // Check for duplicate email error (Postgres error code 23505)
+      if (error?.code === '23505' && error?.message?.includes('employees_org_id_email_key')) {
+        toast({
+          title: 'Duplicate Email',
+          description: 'An employee with this email already exists in your organization.',
+          variant: 'destructive',
+        });
+        form.setError('email', {
+          type: 'manual',
+          message: 'This email already exists in your organization',
+        });
+        form.setFocus('email');
+        setIsSubmitting(false);
+        return; // Keep form open with data
+      }
+      
+      // Handle other errors
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to add employee',
         variant: 'destructive',
       });
+      
+      // Reset and close only for non-duplicate errors
+      setOpen(false);
+      form.reset();
     } finally {
       setIsSubmitting(false);
     }
