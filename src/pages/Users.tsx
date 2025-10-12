@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
+import { InviteUserDialog } from '@/components/InviteUserDialog';
 import { PageContent } from '@/components/PageContent';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -151,6 +152,7 @@ export default function Users() {
       <PageHeader 
         title="Users" 
         description="Manage user accounts and roles"
+        actions={<InviteUserDialog />}
       />
 
       {/* Search */}
