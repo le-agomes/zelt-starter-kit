@@ -25,23 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Handle post-signin logic
-        if (event === 'SIGNED_IN' && session) {
-          setTimeout(async () => {
-            try {
-              await supabase.functions.invoke('post-signin');
-            } catch (error) {
-              console.error('Post-signin error:', error);
-            }
-            
-            // Only navigate if on public routes
-            const currentPath = window.location.pathname;
-            if (currentPath === '/' || currentPath.startsWith('/auth')) {
-              navigate('/app/dashboard');
-            }
-          }, 0);
-        }
       }
     );
 
@@ -56,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   const signInWithMagicLink = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/auth/callback`;
     
     const { error } = await supabase.auth.signInWithOtp({
       email,

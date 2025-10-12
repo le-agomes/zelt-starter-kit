@@ -13,6 +13,7 @@ import EmployeeDetail from "./pages/EmployeeDetail";
 import Templates from "./pages/Templates";
 import TemplateDetail from "./pages/TemplateDetail";
 import SignIn from "./pages/SignIn";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth/sign-in" element={<SignIn />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
                 <Route
                   path="/app/dashboard"
