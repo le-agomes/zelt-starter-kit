@@ -106,21 +106,27 @@ export default function WorkflowDetail() {
     if (targetIndex < 0 || targetIndex >= steps.length) return;
 
     const currentStep = steps[stepIndex];
-    const targetStep = steps[targetIndex];
+    const fromOrdinal = currentStep.ordinal;
+    const toOrdinal = steps[targetIndex].ordinal;
 
     try {
-      // Swap ordinals
-      const { error: error1 } = await (supabase as any)
-        .from('workflow_steps')
-        .update({ ordinal: targetStep.ordinal })
-        .eq('id', currentStep.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
 
-      const { error: error2 } = await (supabase as any)
-        .from('workflow_steps')
-        .update({ ordinal: currentStep.ordinal })
-        .eq('id', targetStep.id);
+      const response = await supabase.functions.invoke('reorder-steps', {
+        body: {
+          workflowId: id,
+          fromOrdinal,
+          toOrdinal,
+        },
+      });
 
-      if (error1 || error2) throw error1 || error2;
+      if (response.error) throw response.error;
+
+      toast({
+        title: 'Step reordered',
+        description: 'The workflow step has been reordered successfully.',
+      });
 
       fetchSteps();
     } catch (error) {
