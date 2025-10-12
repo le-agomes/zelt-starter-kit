@@ -64,6 +64,41 @@ export type Database = {
           },
         ]
       }
+      onboarding_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string | null
@@ -87,21 +122,27 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active: boolean | null
           created_at: string | null
+          email: string | null
           full_name: string | null
           id: string
           org_id: string | null
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          active?: boolean | null
           created_at?: string | null
+          email?: string | null
           full_name?: string | null
           id: string
           org_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          active?: boolean | null
           created_at?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
           org_id?: string | null
@@ -117,26 +158,160 @@ export type Database = {
           },
         ]
       }
+      template_steps: {
+        Row: {
+          auto_advance: boolean | null
+          config: Json | null
+          due_days_from_start: number | null
+          id: string
+          ordinal: number
+          owner_role: Database["public"]["Enums"]["user_role"]
+          template_id: string
+          title: string
+          type: Database["public"]["Enums"]["step_type"]
+        }
+        Insert: {
+          auto_advance?: boolean | null
+          config?: Json | null
+          due_days_from_start?: number | null
+          id?: string
+          ordinal: number
+          owner_role: Database["public"]["Enums"]["user_role"]
+          template_id: string
+          title: string
+          type: Database["public"]["Enums"]["step_type"]
+        }
+        Update: {
+          auto_advance?: boolean | null
+          config?: Json | null
+          due_days_from_start?: number | null
+          id?: string
+          ordinal?: number
+          owner_role?: Database["public"]["Enums"]["user_role"]
+          template_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["step_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
           id: string
+          profile_id: string | null
           role: Database["public"]["Enums"]["user_role"]
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          profile_id?: string | null
           role: Database["public"]["Enums"]["user_role"]
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          profile_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_steps: {
+        Row: {
+          auto_advance: boolean | null
+          config: Json | null
+          due_days_from_start: number | null
+          id: string
+          ordinal: number
+          owner_role: Database["public"]["Enums"]["user_role"]
+          title: string
+          type: Database["public"]["Enums"]["step_type"]
+          workflow_id: string
+        }
+        Insert: {
+          auto_advance?: boolean | null
+          config?: Json | null
+          due_days_from_start?: number | null
+          id?: string
+          ordinal: number
+          owner_role: Database["public"]["Enums"]["user_role"]
+          title: string
+          type: Database["public"]["Enums"]["step_type"]
+          workflow_id: string
+        }
+        Update: {
+          auto_advance?: boolean | null
+          config?: Json | null
+          due_days_from_start?: number | null
+          id?: string
+          ordinal?: number
+          owner_role?: Database["public"]["Enums"]["user_role"]
+          title?: string
+          type?: Database["public"]["Enums"]["step_type"]
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflows_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -146,6 +321,10 @@ export type Database = {
       get_user_org_id: {
         Args: { _user_id: string }
         Returns: string
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
       }
       has_role: {
         Args: {
@@ -167,6 +346,7 @@ export type Database = {
         | "candidate"
         | "onboarding"
         | "offboarded"
+      step_type: "form" | "task" | "email" | "signature" | "wait"
       user_role: "admin" | "hr" | "manager" | "it" | "employee"
     }
     CompositeTypes: {
@@ -303,6 +483,7 @@ export const Constants = {
         "onboarding",
         "offboarded",
       ],
+      step_type: ["form", "task", "email", "signature", "wait"],
       user_role: ["admin", "hr", "manager", "it", "employee"],
     },
   },
