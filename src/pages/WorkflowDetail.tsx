@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { PageContent } from '@/components/PageContent';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, ArrowLeft, ListTodo, ArrowUp, ArrowDown, Edit, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, ListTodo, ArrowUp, ArrowDown, Edit, Trash2, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { NewStepDialog } from '@/components/NewStepDialog';
@@ -32,11 +32,13 @@ interface WorkflowStep {
 
 export default function WorkflowDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingStep, setEditingStep] = useState<WorkflowStep | null>(null);
   const [deletingStepId, setDeletingStepId] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
 
   const fetchWorkflow = async () => {
     if (!id) return;
@@ -167,6 +169,40 @@ export default function WorkflowDetail() {
     }
   };
 
+  const handleDuplicateWorkflow = async () => {
+    if (!id || duplicating) return;
+
+    setDuplicating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await supabase.functions.invoke('duplicate-workflow', {
+        body: { workflowId: id },
+      });
+
+      if (response.error) throw response.error;
+
+      const { workflowId: newWorkflowId, stepsCount } = response.data;
+
+      toast({
+        title: 'Workflow duplicated',
+        description: `Successfully copied workflow with ${stepsCount} step${stepsCount !== 1 ? 's' : ''}.`,
+      });
+
+      navigate(`/app/workflows/${newWorkflowId}`);
+    } catch (error) {
+      console.error('Error duplicating workflow:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to duplicate workflow.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   const maxOrdinal = steps.length > 0 ? Math.max(...steps.map((s) => s.ordinal)) : 0;
 
   if (loading) {
@@ -195,17 +231,29 @@ export default function WorkflowDetail() {
           title={workflow?.name || 'Workflow'}
           description={workflow?.description || 'Configure the steps for this onboarding workflow'}
           actions={
-            <NewStepDialog
-              workflowId={id!}
-              maxOrdinal={maxOrdinal}
-              onStepCreated={handleStepCreated}
-              trigger={
-                <Button size="lg" className="gap-2">
-                  <Plus className="h-5 w-5" />
-                  New Step
-                </Button>
-              }
-            />
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="gap-2"
+                onClick={handleDuplicateWorkflow}
+                disabled={duplicating}
+              >
+                <Copy className="h-5 w-5" />
+                Duplicate
+              </Button>
+              <NewStepDialog
+                workflowId={id!}
+                maxOrdinal={maxOrdinal}
+                onStepCreated={handleStepCreated}
+                trigger={
+                  <Button size="lg" className="gap-2">
+                    <Plus className="h-5 w-5" />
+                    New Step
+                  </Button>
+                }
+              />
+            </div>
           }
         />
 
