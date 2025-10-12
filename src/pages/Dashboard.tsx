@@ -6,12 +6,47 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { PageContent } from '@/components/PageContent';
 import { PageHeader } from '@/components/PageHeader';
+import { useQuery } from '@tanstack/react-query';
+import { Users, UserPlus, Calendar } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
+
+  // Fetch employee statistics
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['employee-stats'],
+    queryFn: async () => {
+      const { data: employees, error } = await supabase
+        .from('employees')
+        .select('status, created_at');
+
+      if (error) throw error;
+
+      // Calculate active employees
+      const activeCount = employees?.filter(e => e.status === 'active').length || 0;
+
+      // Calculate onboarding employees
+      const onboardingCount = employees?.filter(e => e.status === 'onboarding').length || 0;
+
+      // Calculate new this month
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const newThisMonthCount = employees?.filter(e => {
+        const createdAt = new Date(e.created_at);
+        return createdAt >= startOfMonth;
+      }).length || 0;
+
+      return {
+        active: activeCount,
+        onboarding: onboardingCount,
+        newThisMonth: newThisMonthCount,
+      };
+    },
+  });
 
   const handleFinalizeSetup = async () => {
     setIsLoading(true);
@@ -53,6 +88,63 @@ export default function Dashboard() {
         title="Dashboard" 
         description={`Welcome back, ${user?.email}`}
       />
+
+      {/* Employee Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                <Users className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-2 text-muted-foreground">Active Employees</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-6 font-semibold mt-1">{stats?.active || 0}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
+                <UserPlus className="h-6 w-6 text-accent" />
+              </div>
+              <div className="flex-1">
+                <p className="text-2 text-muted-foreground">Onboarding</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-6 font-semibold mt-1">{stats?.onboarding || 0}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
+                <Calendar className="h-6 w-6 text-secondary-foreground" />
+              </div>
+              <div className="flex-1">
+                <p className="text-2 text-muted-foreground">New This Month</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16 mt-1" />
+                ) : (
+                  <p className="text-6 font-semibold mt-1">{stats?.newThisMonth || 0}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
           <Card className="md:col-span-2">
