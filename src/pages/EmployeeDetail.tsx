@@ -8,6 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +44,12 @@ import {
   Clock,
   Edit,
   Trash2,
+  Check,
+  ChevronsUpDown,
+  UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name: string) => {
   return name
@@ -64,6 +82,15 @@ interface Employee {
   start_date: string | null;
   status: 'active' | 'inactive' | 'on_leave' | 'candidate' | 'onboarding' | 'offboarded';
   created_at: string;
+  org_id: string;
+  manager_profile_id: string | null;
+  manager_name?: string | null;
+}
+
+interface Profile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
 }
 
 export default function EmployeeDetail() {
@@ -75,20 +102,55 @@ export default function EmployeeDetail() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
+  const [isSavingManager, setIsSavingManager] = useState(false);
 
   const fetchEmployee = async () => {
     if (!id) return;
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('employees')
         .select('*')
         .eq('id', id)
         .maybeSingle();
 
       if (error) throw error;
-      setEmployee(data);
+      
+      if (data) {
+        let managerName = null;
+        
+        // Fetch manager name if manager_profile_id exists
+        if (data.manager_profile_id) {
+          const { data: managerData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', data.manager_profile_id)
+            .maybeSingle();
+          
+          managerName = managerData?.full_name || null;
+        }
+
+        setEmployee({
+          ...data,
+          manager_name: managerName,
+        } as Employee);
+
+        // Fetch profiles from same org for manager selection
+        if (data.org_id) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('org_id', data.org_id)
+            .order('full_name');
+
+          if (!profilesError && profilesData) {
+            setProfiles(profilesData);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching employee:', error);
       toast({
@@ -98,6 +160,45 @@ export default function EmployeeDetail() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleManagerChange = async (managerId: string | null) => {
+    if (!employee) return;
+
+    setIsSavingManager(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('employees')
+        .update({ manager_profile_id: managerId })
+        .eq('id', employee.id);
+
+      if (error) throw error;
+
+      const managerName = managerId 
+        ? profiles.find(p => p.id === managerId)?.full_name || null
+        : null;
+
+      setEmployee({
+        ...employee,
+        manager_profile_id: managerId,
+        manager_name: managerName,
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Manager updated successfully',
+      });
+      setManagerPopoverOpen(false);
+    } catch (error) {
+      console.error('Error updating manager:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update manager',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingManager(false);
     }
   };
 
@@ -217,6 +318,12 @@ export default function EmployeeDetail() {
                 {employee.job_title && (
                   <p className="text-muted-foreground mt-1">{employee.job_title}</p>
                 )}
+                {employee.manager_name && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
+                    <UserCheck className="h-4 w-4" />
+                    <span>Reports to {employee.manager_name}</span>
+                  </div>
+                )}
                 <Badge variant="secondary" className="mt-3">
                   {getStatusLabel(employee.status)}
                 </Badge>
@@ -253,6 +360,80 @@ export default function EmployeeDetail() {
               <CardTitle className="text-lg">Employment Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Manager Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="manager-select" className="text-xs text-muted-foreground">
+                  Manager
+                </Label>
+                <Popover open={managerPopoverOpen} onOpenChange={setManagerPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="manager-select"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={managerPopoverOpen}
+                      className="w-full justify-between"
+                      disabled={isSavingManager}
+                    >
+                      {employee.manager_profile_id
+                        ? profiles.find((p) => p.id === employee.manager_profile_id)?.full_name || 'Select manager...'
+                        : 'Select manager...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search managers..." />
+                      <CommandList>
+                        <CommandEmpty>No manager found.</CommandEmpty>
+                        <CommandGroup>
+                          {employee.manager_profile_id && (
+                            <CommandItem
+                              value="none"
+                              onSelect={() => handleManagerChange(null)}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  !employee.manager_profile_id ? 'opacity-100' : 'opacity-0'
+                                )}
+                              />
+                              No manager
+                            </CommandItem>
+                          )}
+                          {profiles
+                            .filter((p) => p.id !== employee.id)
+                            .map((profile) => (
+                              <CommandItem
+                                key={profile.id}
+                                value={profile.full_name || profile.email || profile.id}
+                                onSelect={() => handleManagerChange(profile.id)}
+                              >
+                                <Check
+                                  className={cn(
+                                    'mr-2 h-4 w-4',
+                                    employee.manager_profile_id === profile.id
+                                      ? 'opacity-100'
+                                      : 'opacity-0'
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{profile.full_name || 'Unnamed'}</span>
+                                  {profile.email && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {profile.email}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               {employee.department && (
                 <div className="flex items-start gap-3">
                   <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
