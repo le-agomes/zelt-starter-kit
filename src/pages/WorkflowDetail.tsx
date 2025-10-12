@@ -5,20 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, ArrowLeft, ListTodo } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export default function TemplateDetail() {
+export default function WorkflowDetail() {
   return (
     <PageContent>
       <div className="space-y-6">
         <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2">
-          <Link to="/app/templates">
+          <Link to="/app/workflows">
             <ArrowLeft className="h-4 w-4" />
-            Back to Templates
+            Back to Workflows
           </Link>
         </Button>
 
         <PageHeader
-          title="Template Name"
-          description="Configure the steps for this onboarding template"
+          title="Workflow Name"
+          description="Configure the steps for this onboarding workflow"
           actions={
             <Button size="lg" className="gap-2">
               <Plus className="h-5 w-5" />
@@ -30,7 +30,7 @@ export default function TemplateDetail() {
         {/* Steps List Placeholder */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-4 font-semibold">Template Steps</CardTitle>
+            <CardTitle className="text-4 font-semibold">Workflow Steps</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12 px-6 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
@@ -38,7 +38,7 @@ export default function TemplateDetail() {
             </div>
             <h3 className="text-4 font-semibold mb-2">No steps yet</h3>
             <p className="text-2 text-muted-foreground mb-6 max-w-sm">
-              Add steps to define the onboarding workflow for this template.
+              Add steps to define the onboarding workflow for this workflow.
             </p>
             <Button size="lg" className="gap-2">
               <Plus className="h-5 w-5" />

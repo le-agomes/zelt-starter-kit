@@ -10,8 +10,8 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import EmployeeDetail from "./pages/EmployeeDetail";
-import Templates from "./pages/Templates";
-import TemplateDetail from "./pages/TemplateDetail";
+import Workflows from "./pages/Workflows";
+import WorkflowDetail from "./pages/WorkflowDetail";
 import SignIn from "./pages/SignIn";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
@@ -57,18 +57,18 @@ function App() {
                   }
                 />
                 <Route
-                  path="/app/templates"
+                  path="/app/workflows"
                   element={
                     <ProtectedRoute>
-                      <Templates />
+                      <Workflows />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/app/templates/:id"
+                  path="/app/workflows/:id"
                   element={
                     <ProtectedRoute>
-                      <TemplateDetail />
+                      <WorkflowDetail />
                     </ProtectedRoute>
                   }
                 />

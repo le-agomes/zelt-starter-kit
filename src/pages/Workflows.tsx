@@ -11,9 +11,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { NewTemplateDialog } from '@/components/NewTemplateDialog';
+import { NewWorkflowDialog } from '@/components/NewWorkflowDialog';
 
-interface Template {
+interface Workflow {
   id: string;
   name: string;
   description: string | null;
@@ -22,14 +22,14 @@ interface Template {
   org_id: string;
 }
 
-export default function Templates() {
+export default function Workflows() {
   const [search, setSearch] = useState('');
 
-  const { data: templates, isLoading } = useQuery({
-    queryKey: ['templates', search],
+  const { data: workflows, isLoading } = useQuery({
+    queryKey: ['workflows', search],
     queryFn: async () => {
       let query = (supabase as any)
-        .from('onboarding_templates')
+        .from('workflows')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -40,25 +40,25 @@ export default function Templates() {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Template[];
+      return data as Workflow[];
     },
   });
 
-  const filteredTemplates = templates || [];
+  const filteredWorkflows = workflows || [];
 
   return (
     <PageContent>
       <PageHeader
-        title="Templates"
-        description="Manage onboarding templates for your team"
-        actions={<NewTemplateDialog />}
+        title="Workflows"
+        description="Manage onboarding workflows for your team"
+        actions={<NewWorkflowDialog />}
       />
 
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search templates..."
+          placeholder="Search workflows..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 h-12"
@@ -80,50 +80,50 @@ export default function Templates() {
       )}
 
       {/* Empty State */}
-      {!isLoading && filteredTemplates.length === 0 && !search && (
+      {!isLoading && filteredWorkflows.length === 0 && !search && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-6">
               <FileText className="h-10 w-10 text-muted-foreground" />
             </div>
-            <h3 className="text-5 font-semibold mb-2">No templates yet</h3>
+            <h3 className="text-5 font-semibold mb-2">No workflows yet</h3>
             <p className="text-3 text-muted-foreground mb-6 max-w-sm">
-              Create your first onboarding template to streamline the employee onboarding process.
+              Create your first onboarding workflow to streamline the employee onboarding process.
             </p>
-            <NewTemplateDialog />
+            <NewWorkflowDialog />
           </CardContent>
         </Card>
       )}
 
       {/* No Results */}
-      {!isLoading && filteredTemplates.length === 0 && search && (
+      {!isLoading && filteredWorkflows.length === 0 && search && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 px-6 text-center">
             <p className="text-muted-foreground">
-              No templates found matching "{search}"
+              No workflows found matching "{search}"
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Templates List */}
-      {!isLoading && filteredTemplates.length > 0 && (
+      {/* Workflows List */}
+      {!isLoading && filteredWorkflows.length > 0 && (
         <div className="space-y-4">
-          {filteredTemplates.map((template) => (
-            <Link key={template.id} to={`/app/templates/${template.id}`}>
+          {filteredWorkflows.map((workflow) => (
+            <Link key={workflow.id} to={`/app/workflows/${workflow.id}`}>
               <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-5 mb-2">{template.name}</CardTitle>
+                      <CardTitle className="text-5 mb-2">{workflow.name}</CardTitle>
                       <div className="flex items-center gap-2 text-3 text-muted-foreground">
                         <span>
-                          Created {format(new Date(template.created_at), 'MMM d, yyyy')}
+                          Created {format(new Date(workflow.created_at), 'MMM d, yyyy')}
                         </span>
                       </div>
                     </div>
-                    <Badge variant={template.is_active ? 'default' : 'secondary'}>
-                      {template.is_active ? 'Active' : 'Inactive'}
+                    <Badge variant={workflow.is_active ? 'default' : 'secondary'}>
+                      {workflow.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
                 </CardHeader>

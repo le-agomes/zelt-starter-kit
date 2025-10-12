@@ -21,14 +21,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
 
-const templateSchema = z.object({
+const workflowSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   description: z.string().trim().max(500, 'Description must be less than 500 characters').optional(),
 });
 
-type TemplateFormData = z.infer<typeof templateSchema>;
+type WorkflowFormData = z.infer<typeof workflowSchema>;
 
-export function NewTemplateDialog() {
+export function NewWorkflowDialog() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
@@ -40,15 +40,15 @@ export function NewTemplateDialog() {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<TemplateFormData>({
-    resolver: zodResolver(templateSchema),
+  } = useForm<WorkflowFormData>({
+    resolver: zodResolver(workflowSchema),
   });
 
-  const onSubmit = async (data: TemplateFormData) => {
+  const onSubmit = async (data: WorkflowFormData) => {
     if (!user) {
       toast({
         title: 'Error',
-        description: 'You must be signed in to create a template',
+        description: 'You must be signed in to create a workflow',
         variant: 'destructive',
       });
       return;
@@ -74,9 +74,9 @@ export function NewTemplateDialog() {
         return;
       }
 
-      // Insert new template
-      const { data: newTemplate, error: insertError } = await (supabase as any)
-        .from('onboarding_templates')
+      // Insert new workflow
+      const { data: newWorkflow, error: insertError } = await (supabase as any)
+        .from('workflows')
         .insert({
           name: data.name,
           description: data.description || null,
@@ -90,7 +90,7 @@ export function NewTemplateDialog() {
         console.error('Insert error:', insertError);
         toast({
           title: 'Error',
-          description: 'Failed to create template. Please try again.',
+          description: 'Failed to create workflow. Please try again.',
           variant: 'destructive',
         });
         return;
@@ -98,12 +98,12 @@ export function NewTemplateDialog() {
 
       toast({
         title: 'Success',
-        description: 'Template created successfully',
+        description: 'Workflow created successfully',
       });
 
       reset();
       setOpen(false);
-      navigate(`/app/templates/${newTemplate.id}`);
+      navigate(`/app/workflows/${newWorkflow.id}`);
     } catch (error) {
       console.error('Unexpected error:', error);
       toast({
@@ -121,15 +121,15 @@ export function NewTemplateDialog() {
       <DialogTrigger asChild>
         <Button size="lg" className="gap-2">
           <Plus className="h-5 w-5" />
-          New Template
+          New Workflow
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Create New Template</DialogTitle>
+            <DialogTitle>Create New Workflow</DialogTitle>
             <DialogDescription>
-              Create a new onboarding template for your organization
+              Create a new onboarding workflow for your organization
             </DialogDescription>
           </DialogHeader>
           
@@ -153,7 +153,7 @@ export function NewTemplateDialog() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Describe what this template is for..."
+                placeholder="Describe what this workflow is for..."
                 rows={4}
                 {...register('description')}
                 aria-invalid={errors.description ? 'true' : 'false'}
@@ -174,7 +174,7 @@ export function NewTemplateDialog() {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Template'}
+              {isSubmitting ? 'Creating...' : 'Create Workflow'}
             </Button>
           </DialogFooter>
         </form>
