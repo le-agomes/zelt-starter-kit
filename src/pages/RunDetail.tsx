@@ -6,9 +6,11 @@ import { PageContent } from '@/components/PageContent';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { AssigneeCell } from '@/components/AssigneeCell';
 import { format } from 'date-fns';
+import { Pause, Play, CheckCircle, SkipForward } from 'lucide-react';
 
 interface RunStepInstance {
   id: string;
@@ -135,6 +137,80 @@ export default function RunDetail() {
     }
   };
 
+  const handleTogglePause = async () => {
+    if (!run) return;
+
+    try {
+      const { error } = await supabase.functions.invoke('toggle-run-pause', {
+        body: { run_id: run.id },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Run ${run.status === 'running' ? 'paused' : 'resumed'}`,
+      });
+
+      fetchRunData();
+    } catch (error) {
+      console.error('Error toggling pause:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update run status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCompleteStep = async (stepInstanceId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('complete-step', {
+        body: { step_instance_id: stepInstanceId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Step completed',
+      });
+
+      fetchRunData();
+    } catch (error) {
+      console.error('Error completing step:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete step',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSkipStep = async (stepInstanceId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('skip-step', {
+        body: { step_instance_id: stepInstanceId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Step skipped',
+      });
+
+      fetchRunData();
+    } catch (error) {
+      console.error('Error skipping step:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to skip step',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -169,9 +245,29 @@ export default function RunDetail() {
       <PageHeader 
         title={`Run: ${run.workflow.name}`}
         actions={
-          <Badge variant={run.status === 'running' ? 'default' : 'secondary'}>
-            {run.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={run.status === 'running' ? 'default' : 'secondary'}>
+              {run.status}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePause}
+              disabled={run.status === 'completed' || run.status === 'cancelled'}
+            >
+              {run.status === 'running' ? (
+                <>
+                  <Pause className="h-4 w-4 mr-1" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-1" />
+                  Resume
+                </>
+              )}
+            </Button>
+          </div>
         }
       />
       <PageContent>
@@ -218,10 +314,10 @@ export default function RunDetail() {
                 {steps.map((step) => (
                   <div
                     key={step.id}
-                    className="flex items-center justify-between gap-4 p-4 border rounded-lg"
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 border rounded-lg"
                   >
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-muted-foreground">
                           #{step.ordinal}
                         </span>
@@ -230,10 +326,10 @@ export default function RunDetail() {
                           {step.workflow_step.type}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <Badge
                           variant={
-                            step.status === 'completed'
+                            step.status === 'done'
                               ? 'default'
                               : step.status === 'pending'
                               ? 'secondary'
@@ -249,11 +345,33 @@ export default function RunDetail() {
                           <span>Completed: {format(new Date(step.completed_at), 'PP')}</span>
                         )}
                       </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <AssigneeCell
+                          assignee={step.assignee}
+                          onReassign={(userId) => handleReassign(step.id, userId)}
+                        />
+                      </div>
                     </div>
-                    <AssigneeCell
-                      assignee={step.assignee}
-                      onReassign={(userId) => handleReassign(step.id, userId)}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCompleteStep(step.id)}
+                        disabled={step.status === 'done' || step.status === 'skipped'}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Complete
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSkipStep(step.id)}
+                        disabled={step.status === 'done' || step.status === 'skipped'}
+                      >
+                        <SkipForward className="h-4 w-4 mr-1" />
+                        Skip
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
