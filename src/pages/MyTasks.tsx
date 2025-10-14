@@ -7,8 +7,17 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, Clock, FileText, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { CheckCircle2, Clock, FileText, AlertCircle, ExternalLink } from 'lucide-react';
 import { format, isPast } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface MyTask {
   id: string;
@@ -18,6 +27,7 @@ interface MyTask {
   run_id: string;
   step_title: string;
   step_type: string;
+  step_config: any;
   workflow_name: string;
   employee_name: string;
 }
@@ -25,9 +35,13 @@ interface MyTask {
 export default function MyTasks() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<MyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<MyTask | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCompleting, setIsCompleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -75,7 +89,7 @@ export default function MyTasks() {
         const stepIds = stepInstances.map((si: any) => si.workflow_step_id);
         const { data: workflowSteps, error: wsError } = await (supabase as any)
           .from('workflow_steps')
-          .select('id, title, type, workflow_id')
+          .select('id, title, type, workflow_id, config')
           .in('id', stepIds);
 
         if (wsError) throw wsError;
@@ -118,6 +132,7 @@ export default function MyTasks() {
             run_id: item.run_id,
             step_title: step?.title || 'Unknown Step',
             step_type: step?.type || 'task',
+            step_config: step?.config || {},
             workflow_name: workflow?.name || 'Unknown Workflow',
             employee_name: employee?.full_name || 'Unknown Employee',
           };
@@ -133,6 +148,47 @@ export default function MyTasks() {
 
     fetchMyTasks();
   }, [profileId]);
+
+  const handleComplete = async (taskId: string) => {
+    setIsCompleting(taskId);
+    try {
+      const { error } = await supabase.functions.invoke('complete-step', {
+        body: { step_instance_id: taskId },
+      });
+
+      if (error) throw error;
+
+      // Remove from list
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      
+      toast({
+        title: "Task completed",
+        description: "The task has been marked as complete.",
+      });
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete the task. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompleting(null);
+    }
+  };
+
+  const handleOpen = (task: MyTask) => {
+    setSelectedTask(task);
+    setIsDialogOpen(true);
+  };
+
+  const handleMarkDone = async () => {
+    if (!selectedTask) return;
+    
+    await handleComplete(selectedTask.id);
+    setIsDialogOpen(false);
+    setSelectedTask(null);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -189,11 +245,13 @@ export default function MyTasks() {
             return (
               <Card
                 key={task.id}
-                className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-                onClick={() => navigate(`/app/runs/${task.run_id}`)}
+                className="p-4"
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <div 
+                    className="flex items-start gap-2 flex-1 min-w-0 cursor-pointer"
+                    onClick={() => navigate(`/app/runs/${task.run_id}`)}
+                  >
                     <div className="mt-0.5 text-muted-foreground">
                       {getTypeIcon(task.step_type)}
                     </div>
@@ -211,22 +269,116 @@ export default function MyTasks() {
                   </Badge>
                 </div>
                 
-                <div className="flex items-center gap-2 flex-wrap">
-                  {task.due_at && (
-                    <Badge 
-                      variant={isOverdue ? "destructive" : "outline"}
-                      className="flex items-center gap-1.5 text-xs"
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {task.due_at && (
+                      <Badge 
+                        variant={isOverdue ? "destructive" : "outline"}
+                        className="flex items-center gap-1.5 text-xs"
+                      >
+                        {isOverdue ? <AlertCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                        <span>{isOverdue ? 'Overdue' : `Due ${format(new Date(task.due_at), 'MMM d, yyyy')}`}</span>
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpen(task)}
                     >
-                      {isOverdue ? <AlertCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                      <span>{isOverdue ? 'Overdue' : `Due ${format(new Date(task.due_at), 'MMM d, yyyy')}`}</span>
-                    </Badge>
-                  )}
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      Open
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleComplete(task.id)}
+                      disabled={isCompleting === task.id}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                      {isCompleting === task.id ? 'Completing...' : 'Complete'}
+                    </Button>
+                  </div>
                 </div>
               </Card>
             );
           })}
         </div>
       )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedTask?.step_title}</DialogTitle>
+            <DialogDescription>
+              {selectedTask?.employee_name} • {selectedTask?.workflow_name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {selectedTask?.step_type === 'form' && (
+              <div className="rounded-lg border border-border bg-muted/50 p-8 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Form rendering coming soon
+                </p>
+              </div>
+            )}
+
+            {selectedTask?.step_type === 'task' && (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Description</h4>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                      {selectedTask.step_config?.description || 'No description provided'}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedTask.step_config?.checklist && selectedTask.step_config.checklist.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Checklist</h4>
+                    <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
+                      {selectedTask.step_config.checklist.map((item: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="mt-0.5">
+                            <div className="h-4 w-4 rounded border border-border bg-background" />
+                          </div>
+                          <p className="text-sm text-foreground">{item}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleMarkDone}
+                  disabled={isCompleting === selectedTask?.id}
+                  className="w-full"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {isCompleting === selectedTask?.id ? 'Marking done...' : 'Mark done'}
+                </Button>
+              </div>
+            )}
+
+            {(selectedTask?.step_type === 'email' || selectedTask?.step_type === 'signature') && (
+              <div className="rounded-lg border border-border bg-muted/50 p-8 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  Read-only preview for {selectedTask.step_type} steps
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Completion is admin-driven until automations are wired
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContent>
   );
 }
