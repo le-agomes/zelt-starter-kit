@@ -2,3 +2,9 @@ project_id = "qziltegbxmsmnsifuast"
 
 [functions.post-signin]
 verify_jwt = true
+
+[functions.get-org-settings]
+verify_jwt = true
+
+[functions.save-org-settings]
+verify_jwt = true

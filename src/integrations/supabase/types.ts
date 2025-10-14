@@ -16,45 +16,115 @@ export type Database = {
     Tables: {
       employees: {
         Row: {
+          address_line1: string | null
+          address_line2: string | null
+          birth_date: string | null
+          city: string | null
+          country: string | null
           created_at: string
           department: string | null
           email: string
+          emergency_email: string | null
+          emergency_name: string | null
+          emergency_phone: string | null
+          emergency_relation: string | null
+          employment_type: string | null
+          end_date: string | null
           full_name: string
+          gender: string | null
           id: string
           job_title: string | null
           location: string | null
+          manager_profile_id: string | null
+          nationality: string | null
           org_id: string
+          personal_email: string | null
+          phone_mobile: string | null
+          postal_code: string | null
+          preferred_name: string | null
+          pronouns: string | null
           start_date: string | null
+          state: string | null
           status: Database["public"]["Enums"]["employee_status"]
           updated_at: string
+          work_email: string | null
         }
         Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          birth_date?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           department?: string | null
           email: string
+          emergency_email?: string | null
+          emergency_name?: string | null
+          emergency_phone?: string | null
+          emergency_relation?: string | null
+          employment_type?: string | null
+          end_date?: string | null
           full_name: string
+          gender?: string | null
           id?: string
           job_title?: string | null
           location?: string | null
+          manager_profile_id?: string | null
+          nationality?: string | null
           org_id: string
+          personal_email?: string | null
+          phone_mobile?: string | null
+          postal_code?: string | null
+          preferred_name?: string | null
+          pronouns?: string | null
           start_date?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
+          work_email?: string | null
         }
         Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          birth_date?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           department?: string | null
           email?: string
+          emergency_email?: string | null
+          emergency_name?: string | null
+          emergency_phone?: string | null
+          emergency_relation?: string | null
+          employment_type?: string | null
+          end_date?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           job_title?: string | null
           location?: string | null
+          manager_profile_id?: string | null
+          nationality?: string | null
           org_id?: string
+          personal_email?: string | null
+          phone_mobile?: string | null
+          postal_code?: string | null
+          preferred_name?: string | null
+          pronouns?: string | null
           start_date?: string | null
+          state?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
+          work_email?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employees_manager_profile_id_fkey"
+            columns: ["manager_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "employees_org_id_fkey"
             columns: ["org_id"]
@@ -94,6 +164,35 @@ export type Database = {
             foreignKeyName: "onboarding_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_settings: {
+        Row: {
+          created_at: string | null
+          employee_system_fields: Json | null
+          org_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_system_fields?: Json | null
+          org_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_system_fields?: Json | null
+          org_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -154,6 +253,139 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_step_instances: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          due_at: string | null
+          id: string
+          ordinal: number
+          org_id: string
+          payload: Json | null
+          run_id: string
+          status: string
+          workflow_step_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          due_at?: string | null
+          id?: string
+          ordinal: number
+          org_id: string
+          payload?: Json | null
+          run_id: string
+          status?: string
+          workflow_step_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          due_at?: string | null
+          id?: string
+          ordinal?: number
+          org_id?: string
+          payload?: Json | null
+          run_id?: string
+          status?: string
+          workflow_step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_step_instances_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_step_instances_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_step_instances_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_step_instances_workflow_step_id_fkey"
+            columns: ["workflow_step_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      runs: {
+        Row: {
+          completed_at: string | null
+          employee_id: string
+          id: string
+          org_id: string
+          started_at: string | null
+          started_by: string | null
+          status: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          employee_id: string
+          id?: string
+          org_id: string
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          employee_id?: string
+          id?: string
+          org_id?: string
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "runs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
             referencedColumns: ["id"]
           },
         ]
