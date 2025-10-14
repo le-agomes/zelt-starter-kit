@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/FormField';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { Plus, X } from 'lucide-react';
 
 const stepSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -36,6 +38,13 @@ export function EditStepDialog({ step, open, onOpenChange, onStepUpdated }: Edit
     auto_advance: step.auto_advance || false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Type-specific config
+  const [config, setConfig] = useState<any>(step.config || {});
+  const [checklist, setChecklist] = useState<Array<{ text: string; done: boolean }>>(
+    step.config?.checklist || []
+  );
+  const [signers, setSigners] = useState<string[]>(step.config?.signers || []);
 
   useEffect(() => {
     if (step) {
@@ -46,6 +55,9 @@ export function EditStepDialog({ step, open, onOpenChange, onStepUpdated }: Edit
         due_days_from_start: step.due_days_from_start || 0,
         auto_advance: step.auto_advance || false,
       });
+      setConfig(step.config || {});
+      setChecklist(step.config?.checklist || []);
+      setSigners(step.config?.signers || []);
     }
   }, [step]);
 
@@ -67,9 +79,33 @@ export function EditStepDialog({ step, open, onOpenChange, onStepUpdated }: Edit
 
     setLoading(true);
     try {
+      // Build config based on type
+      let finalConfig = {};
+      if (formData.type === 'email') {
+        finalConfig = {
+          subject: config.subject || '',
+          body: config.body || '',
+          to: config.to || { mode: 'role', role: 'employee' }
+        };
+      } else if (formData.type === 'task') {
+        finalConfig = {
+          description: config.description || '',
+          checklist: checklist
+        };
+      } else if (formData.type === 'signature') {
+        finalConfig = {
+          document_id: config.document_id || '',
+          signers: signers
+        };
+      } else if (formData.type === 'wait') {
+        finalConfig = {
+          hours: config.hours || 0
+        };
+      }
+
       const { error } = await (supabase as any)
         .from('workflow_steps')
-        .update(formData)
+        .update({ ...formData, config: finalConfig })
         .eq('id', step.id);
 
       if (error) throw error;
@@ -166,6 +202,175 @@ export function EditStepDialog({ step, open, onOpenChange, onStepUpdated }: Edit
               Auto-advance
             </label>
           </div>
+
+          {/* Email type fields */}
+          {formData.type === 'email' && (
+            <>
+              <FormField label="Subject" required>
+                <Input
+                  value={config.subject || ''}
+                  onChange={(e) => setConfig({ ...config, subject: e.target.value })}
+                  placeholder="Email subject"
+                />
+              </FormField>
+              <FormField label="Body" required>
+                <Textarea
+                  value={config.body || ''}
+                  onChange={(e) => setConfig({ ...config, body: e.target.value })}
+                  placeholder="Email body (use {{employee.full_name}} for variables)"
+                  rows={5}
+                />
+              </FormField>
+              <FormField label="To Mode" required>
+                <Select
+                  value={config.to?.mode || 'role'}
+                  onValueChange={(value) => setConfig({ ...config, to: { ...config.to, mode: value } })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="role">Role</SelectItem>
+                    <SelectItem value="user">Specific User</SelectItem>
+                    <SelectItem value="dynamic">Dynamic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              {config.to?.mode === 'role' && (
+                <FormField label="Role">
+                  <Select
+                    value={config.to?.role || 'employee'}
+                    onValueChange={(value) => setConfig({ ...config, to: { ...config.to, role: value } })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="hr">HR</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="it">IT</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
+            </>
+          )}
+
+          {/* Task type fields */}
+          {formData.type === 'task' && (
+            <>
+              <FormField label="Description">
+                <Textarea
+                  value={config.description || ''}
+                  onChange={(e) => setConfig({ ...config, description: e.target.value })}
+                  placeholder="Task description"
+                  rows={3}
+                />
+              </FormField>
+              <FormField label="Checklist">
+                <div className="space-y-2">
+                  {checklist.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <Input
+                        value={item.text}
+                        onChange={(e) => {
+                          const newList = [...checklist];
+                          newList[idx].text = e.target.value;
+                          setChecklist(newList);
+                        }}
+                        placeholder="Checklist item"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setChecklist([...checklist, { text: '', done: false }])}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add Item
+                  </Button>
+                </div>
+              </FormField>
+            </>
+          )}
+
+          {/* Signature type fields */}
+          {formData.type === 'signature' && (
+            <>
+              <FormField label="Document ID">
+                <Input
+                  value={config.document_id || ''}
+                  onChange={(e) => setConfig({ ...config, document_id: e.target.value })}
+                  placeholder="Document identifier"
+                />
+              </FormField>
+              <FormField label="Signers" required>
+                <div className="space-y-2">
+                  {signers.map((signer, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <Select
+                        value={signer}
+                        onValueChange={(value) => {
+                          const newSigners = [...signers];
+                          newSigners[idx] = value;
+                          setSigners(newSigners);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="employee">Employee</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="it">IT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSigners(signers.filter((_, i) => i !== idx))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSigners([...signers, 'employee'])}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add Signer
+                  </Button>
+                </div>
+              </FormField>
+            </>
+          )}
+
+          {/* Wait type fields */}
+          {formData.type === 'wait' && (
+            <FormField label="Wait Duration (hours)">
+              <Input
+                type="number"
+                min="0"
+                value={config.hours || 0}
+                onChange={(e) => setConfig({ ...config, hours: parseInt(e.target.value) || 0 })}
+              />
+            </FormField>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
