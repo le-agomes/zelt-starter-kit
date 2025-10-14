@@ -14,6 +14,7 @@ import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
 import Workflows from "./pages/Workflows";
 import WorkflowDetail from "./pages/WorkflowDetail";
+import RunDetail from "./pages/RunDetail";
 import SignIn from "./pages/SignIn";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
@@ -87,6 +88,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <WorkflowDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/runs/:id"
+                  element={
+                    <ProtectedRoute>
+                      <RunDetail />
                     </ProtectedRoute>
                   }
                 />
