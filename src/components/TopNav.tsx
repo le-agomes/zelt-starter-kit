@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function TopNav() {
   const { user, signOut } = useAuth();
@@ -40,6 +46,21 @@ export function TopNav() {
               >
                 Workflows
               </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-card">
+                  <DropdownMenuItem asChild>
+                    <Link to="/app/settings/employee-fields" className="cursor-pointer">
+                      Employee Fields
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
           {user ? (
