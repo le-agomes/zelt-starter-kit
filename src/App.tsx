@@ -16,6 +16,7 @@ import Workflows from "./pages/Workflows";
 import WorkflowDetail from "./pages/WorkflowDetail";
 import Runs from "./pages/Runs";
 import RunDetail from "./pages/RunDetail";
+import MyTasks from "./pages/MyTasks";
 import SignIn from "./pages/SignIn";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
@@ -105,6 +106,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <RunDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/app/my-tasks"
+                  element={
+                    <ProtectedRoute>
+                      <MyTasks />
                     </ProtectedRoute>
                   }
                 />
