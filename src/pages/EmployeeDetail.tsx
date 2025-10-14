@@ -2,26 +2,16 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,26 +22,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { EditEmployeeDialog } from '@/components/EditEmployeeDialog';
 import { PageContent } from '@/components/PageContent';
 import { StartRunDialog } from '@/components/StartRunDialog';
 import {
   ArrowLeft,
-  Mail,
-  MapPin,
-  Calendar,
-  Briefcase,
-  User,
-  Clock,
   Edit,
   Trash2,
-  Check,
-  ChevronsUpDown,
-  UserCheck,
   Play,
+  Save,
+  X,
+  EyeOff,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 
 const getInitials = (name: string) => {
   return name
@@ -74,84 +55,117 @@ const getStatusLabel = (status: string) => {
   }
 };
 
-interface Employee {
-  id: string;
-  full_name: string;
-  email: string;
-  job_title: string | null;
-  department: string | null;
-  location: string | null;
-  start_date: string | null;
-  status: 'active' | 'inactive' | 'on_leave' | 'candidate' | 'onboarding' | 'offboarded';
-  created_at: string;
-  org_id: string;
-  manager_profile_id: string | null;
-  manager_name?: string | null;
+interface FieldConfig {
+  visible: boolean;
+  required: boolean;
+  section: string;
+  ordinal: number;
 }
 
-interface Profile {
+interface CustomField {
   id: string;
-  full_name: string | null;
-  email: string | null;
+  key: string;
+  label: string;
+  type: string;
+  options: string[];
+  section: string;
+  required: boolean;
+  is_sensitive: boolean;
+  active: boolean;
+  ordinal: number;
 }
+
+const SECTIONS = ['Identity', 'Contact', 'Employment', 'Emergency'];
+
+const formatFieldName = (fieldName: string): string => {
+  return fieldName
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [employee, setEmployee] = useState<Employee | null>(null);
+  const { user } = useAuth();
+  const [employee, setEmployee] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
-  const [isSavingManager, setIsSavingManager] = useState(false);
   const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [systemFields, setSystemFields] = useState<Record<string, FieldConfig>>({});
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
+  const [editedValues, setEditedValues] = useState<Record<string, any>>({});
+  const [userRole, setUserRole] = useState<string>('employee');
 
   const fetchEmployee = async () => {
     if (!id) return;
 
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase as any)
+      // Fetch employee
+      const { data: empData, error: empError } = await (supabase as any)
         .from('employees')
         .select('*')
         .eq('id', id)
         .maybeSingle();
 
-      if (error) throw error;
-      
-      if (data) {
-        let managerName = null;
-        
-        // Fetch manager name if manager_profile_id exists
-        if (data.manager_profile_id) {
-          const { data: managerData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', data.manager_profile_id)
-            .maybeSingle();
-          
-          managerName = managerData?.full_name || null;
-        }
+      if (empError) throw empError;
+      if (!empData) return;
 
-        setEmployee({
-          ...data,
-          manager_name: managerName,
-        } as Employee);
+      setEmployee(empData);
 
-        // Fetch profiles from same org for manager selection
-        if (data.org_id) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .eq('org_id', data.org_id)
-            .order('full_name');
+      // Fetch org settings for system fields config
+      const { data: settingsData, error: settingsError } = await supabase.functions.invoke('get-org-settings');
+      if (!settingsError && settingsData?.employee_system_fields) {
+        setSystemFields(settingsData.employee_system_fields);
+      }
 
-          if (!profilesError && profilesData) {
-            setProfiles(profilesData);
+      // Fetch custom fields
+      const { data: customData, error: customError } = await (supabase as any)
+        .from('employee_fields')
+        .select('*')
+        .eq('org_id', empData.org_id)
+        .eq('active', true)
+        .order('section')
+        .order('ordinal');
+
+      if (!customError && customData) {
+        setCustomFields(customData);
+
+        // Fetch field values
+        const fieldIds = customData.map((f: CustomField) => f.id);
+        if (fieldIds.length > 0) {
+          const { data: valuesData, error: valuesError } = await (supabase as any)
+            .from('employee_field_values')
+            .select('*')
+            .eq('employee_id', id)
+            .in('field_id', fieldIds);
+
+          if (!valuesError && valuesData) {
+            const valuesMap: Record<string, any> = {};
+            valuesData.forEach((v: any) => {
+              valuesMap[v.field_id] = v.value;
+            });
+            setFieldValues(valuesMap);
           }
+        }
+      }
+
+      // Fetch user role
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (profileData?.role) {
+          setUserRole(profileData.role);
         }
       }
     } catch (error) {
@@ -166,55 +180,82 @@ export default function EmployeeDetail() {
     }
   };
 
-  const handleManagerChange = async (managerId: string | null) => {
+  const handleSaveChanges = async () => {
     if (!employee) return;
 
-    setIsSavingManager(true);
+    setIsSaving(true);
     try {
-      const { error } = await (supabase as any)
-        .from('employees')
-        .update({ manager_profile_id: managerId })
-        .eq('id', employee.id);
+      // Separate system fields and custom fields from editedValues
+      const systemFieldUpdates: Record<string, any> = {};
+      const customFieldUpdates: Array<{ field_id: string; value: any }> = [];
 
-      if (error) throw error;
-
-      const managerName = managerId 
-        ? profiles.find(p => p.id === managerId)?.full_name || null
-        : null;
-
-      setEmployee({
-        ...employee,
-        manager_profile_id: managerId,
-        manager_name: managerName,
+      Object.keys(editedValues).forEach((key) => {
+        if (customFields.find(f => f.id === key)) {
+          customFieldUpdates.push({ field_id: key, value: editedValues[key] });
+        } else {
+          systemFieldUpdates[key] = editedValues[key];
+        }
       });
+
+      // Update system fields in employees table
+      if (Object.keys(systemFieldUpdates).length > 0) {
+        const { error } = await (supabase as any)
+          .from('employees')
+          .update(systemFieldUpdates)
+          .eq('id', employee.id);
+
+        if (error) throw error;
+
+        setEmployee({ ...employee, ...systemFieldUpdates });
+      }
+
+      // Upsert custom field values
+      for (const { field_id, value } of customFieldUpdates) {
+        const { error } = await (supabase as any)
+          .from('employee_field_values')
+          .upsert({
+            employee_id: employee.id,
+            field_id,
+            value,
+          }, {
+            onConflict: 'employee_id,field_id'
+          });
+
+        if (error) throw error;
+
+        setFieldValues(prev => ({ ...prev, [field_id]: value }));
+      }
 
       toast({
         title: 'Success',
-        description: 'Manager updated successfully',
+        description: 'Changes saved successfully',
       });
-      setManagerPopoverOpen(false);
+
+      setIsEditing(false);
+      setEditedValues({});
     } catch (error) {
-      console.error('Error updating manager:', error);
+      console.error('Error saving changes:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update manager',
+        description: 'Failed to save changes',
         variant: 'destructive',
       });
     } finally {
-      setIsSavingManager(false);
+      setIsSaving(false);
     }
   };
 
-  useEffect(() => {
-    fetchEmployee();
-  }, [id]);
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedValues({});
+  };
 
   const handleDelete = async () => {
     if (!employee) return;
 
     setIsDeleting(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('employees')
         .delete()
         .eq('id', employee.id);
@@ -239,41 +280,154 @@ export default function EmployeeDetail() {
     }
   };
 
+  useEffect(() => {
+    fetchEmployee();
+  }, [id, user]);
+
+  const getFieldValue = (key: string, isCustom: boolean = false) => {
+    if (editedValues[key] !== undefined) return editedValues[key];
+    if (isCustom) return fieldValues[key] || '';
+    return employee?.[key] || '';
+  };
+
+  const setFieldValue = (key: string, value: any) => {
+    setEditedValues(prev => ({ ...prev, [key]: value }));
+  };
+
+  const canSeeSensitiveField = () => {
+    return userRole === 'admin' || userRole === 'hr';
+  };
+
+  const renderFieldInput = (key: string, label: string, type: string = 'text', options: string[] = [], isCustom: boolean = false, isSensitive: boolean = false) => {
+    const value = getFieldValue(key, isCustom);
+    const fieldKey = isCustom ? key : key;
+
+    if (!isEditing) {
+      if (isSensitive && !canSeeSensitiveField()) {
+        return (
+          <div className="flex items-center gap-2">
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Hidden (sensitive)</span>
+          </div>
+        );
+      }
+      return <p className="text-sm">{value || '—'}</p>;
+    }
+
+    if (type === 'select') {
+      return (
+        <Select value={value} onValueChange={(v) => setFieldValue(fieldKey, v)}>
+          <SelectTrigger>
+            <SelectValue placeholder={`Select ${label}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map(opt => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    if (type === 'multiselect') {
+      return (
+        <Input
+          value={Array.isArray(value) ? value.join(', ') : value}
+          onChange={(e) => setFieldValue(fieldKey, e.target.value.split(',').map(v => v.trim()))}
+          placeholder={`Enter ${label}`}
+        />
+      );
+    }
+
+    if (type === 'checkbox') {
+      return (
+        <input
+          type="checkbox"
+          checked={!!value}
+          onChange={(e) => setFieldValue(fieldKey, e.target.checked)}
+          className="h-4 w-4"
+        />
+      );
+    }
+
+    if (type === 'date') {
+      return (
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => setFieldValue(fieldKey, e.target.value)}
+        />
+      );
+    }
+
+    if (type === 'number') {
+      return (
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => setFieldValue(fieldKey, e.target.value)}
+        />
+      );
+    }
+
+    if (type === 'textarea') {
+      return (
+        <Textarea
+          value={value}
+          onChange={(e) => setFieldValue(fieldKey, e.target.value)}
+          rows={3}
+        />
+      );
+    }
+
+    return (
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => setFieldValue(fieldKey, e.target.value)}
+        placeholder={`Enter ${label}`}
+      />
+    );
+  };
+
+  const getSystemFieldsBySection = (section: string) => {
+    return Object.entries(systemFields)
+      .filter(([_, config]) => config.section === section && config.visible)
+      .sort((a, b) => a[1].ordinal - b[1].ordinal)
+      .map(([key]) => key);
+  };
+
+  const getCustomFieldsBySection = (section: string) => {
+    return customFields
+      .filter(f => f.section === section)
+      .sort((a, b) => a.ordinal - b.ordinal);
+  };
+
   if (isLoading) {
     return (
-      <PageContent className="max-w-2xl">
+      <PageContent className="max-w-4xl">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate('/app/employees')}
-          className="-ml-2"
+          className="-ml-2 mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
 
         <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-col items-center text-center">
-                <Skeleton className="h-24 w-24 rounded-full" />
-                <Skeleton className="h-8 w-48 mt-4" />
-                <Skeleton className="h-4 w-32 mt-2" />
-                <Skeleton className="h-6 w-20 mt-3" />
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
               </div>
-              <Separator className="my-6" />
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <Skeleton className="h-5 w-5 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-3 w-16" />
-                      <Skeleton className="h-4 w-full" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+              <Skeleton className="h-6 w-20" />
+            </div>
+          </CardContent>
+        </Card>
       </PageContent>
     );
   }
@@ -295,232 +449,151 @@ export default function EmployeeDetail() {
 
   return (
     <>
-      <PageContent className="max-w-2xl">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/app/employees')}
-          className="-ml-2"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
+      <PageContent className="max-w-4xl">
+        <div className="flex justify-between items-center mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/app/employees')}
+            className="-ml-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
 
-        {/* Profile Card */}
-        <Card className="border-border">
-            <CardContent className="p-6">
-              <div className="flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 border-4 border-border">
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-2xl">
-                    {getInitials(employee.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <h1 className="text-2xl font-semibold text-foreground mt-4">
-                  {employee.full_name}
-                </h1>
-                {employee.job_title && (
-                  <p className="text-muted-foreground mt-1">{employee.job_title}</p>
-                )}
-                {employee.manager_name && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
-                    <UserCheck className="h-4 w-4" />
-                    <span>Reports to {employee.manager_name}</span>
-                  </div>
-                )}
-                <Badge variant="secondary" className="mt-3">
-                  {getStatusLabel(employee.status)}
-                </Badge>
-              </div>
-
-              <Separator className="my-6" />
-
-              {/* Contact Information */}
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="text-sm text-foreground break-all">{employee.email}</p>
-                  </div>
-                </div>
-
-                {employee.location && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="text-sm text-foreground">{employee.location}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Employment Details */}
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Employment Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Manager Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="manager-select" className="text-xs text-muted-foreground">
-                  Manager
-                </Label>
-                <Popover open={managerPopoverOpen} onOpenChange={setManagerPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="manager-select"
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={managerPopoverOpen}
-                      className="w-full justify-between"
-                      disabled={isSavingManager}
-                    >
-                      {employee.manager_profile_id
-                        ? profiles.find((p) => p.id === employee.manager_profile_id)?.full_name || 'Select manager...'
-                        : 'Select manager...'}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Search managers..." />
-                      <CommandList>
-                        <CommandEmpty>No manager found.</CommandEmpty>
-                        <CommandGroup>
-                          {employee.manager_profile_id && (
-                            <CommandItem
-                              value="none"
-                              onSelect={() => handleManagerChange(null)}
-                            >
-                              <Check
-                                className={cn(
-                                  'mr-2 h-4 w-4',
-                                  !employee.manager_profile_id ? 'opacity-100' : 'opacity-0'
-                                )}
-                              />
-                              No manager
-                            </CommandItem>
-                          )}
-                          {profiles
-                            .filter((p) => p.id !== employee.id)
-                            .map((profile) => (
-                              <CommandItem
-                                key={profile.id}
-                                value={profile.full_name || profile.email || profile.id}
-                                onSelect={() => handleManagerChange(profile.id)}
-                              >
-                                <Check
-                                  className={cn(
-                                    'mr-2 h-4 w-4',
-                                    employee.manager_profile_id === profile.id
-                                      ? 'opacity-100'
-                                      : 'opacity-0'
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span>{profile.full_name || 'Unnamed'}</span>
-                                  {profile.email && (
-                                    <span className="text-xs text-muted-foreground">
-                                      {profile.email}
-                                    </span>
-                                  )}
-                                </div>
-                              </CommandItem>
-                            ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {employee.department && (
-                <div className="flex items-start gap-3">
-                  <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Department</p>
-                    <p className="text-sm text-foreground">{employee.department}</p>
-                  </div>
-                </div>
-              )}
-
-              {employee.start_date && (
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Start Date</p>
-                    <p className="text-sm text-foreground">
-                      {format(new Date(employee.start_date), 'MMMM dd, yyyy')}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">Created At</p>
-                  <p className="text-sm text-foreground">
-                    {format(new Date(employee.created_at), 'MMMM dd, yyyy')}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
-            <Button
-              variant="default"
-              size="lg"
-              className="h-12"
-              onClick={() => setStartRunDialogOpen(true)}
-            >
-              <Play className="h-4 w-4 mr-2" />
-              Start Workflow
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-12"
-              onClick={() => setEditDialogOpen(true)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-12 text-destructive hover:text-destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleSaveChanges}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>Saving...</>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setStartRunDialogOpen(true)}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Start Workflow
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
+        </div>
+
+        {/* Profile Header */}
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xl">
+                  {getInitials(employee.full_name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h1 className="text-2xl font-semibold">{employee.full_name}</h1>
+                <p className="text-sm text-muted-foreground">{employee.email}</p>
+              </div>
+              <Badge variant="secondary">
+                {getStatusLabel(employee.status)}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Sections */}
+        <div className="space-y-6">
+          {SECTIONS.map(section => {
+            const systemFieldKeys = getSystemFieldsBySection(section);
+            const customFieldsList = getCustomFieldsBySection(section);
+            
+            if (systemFieldKeys.length === 0 && customFieldsList.length === 0) return null;
+
+            return (
+              <Card key={section}>
+                <CardHeader>
+                  <CardTitle>{section}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    {/* System Fields */}
+                    {systemFieldKeys.map(fieldKey => (
+                      <div key={fieldKey} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">
+                          {formatFieldName(fieldKey)}
+                          {systemFields[fieldKey]?.required && <span className="text-destructive ml-1">*</span>}
+                        </Label>
+                        {renderFieldInput(fieldKey, formatFieldName(fieldKey))}
+                      </div>
+                    ))}
+
+                    {/* Custom Fields */}
+                    {customFieldsList.map(field => (
+                      <div key={field.id} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">
+                          {field.label}
+                          {field.required && <span className="text-destructive ml-1">*</span>}
+                          {field.is_sensitive && <span className="ml-1 text-amber-600">(Sensitive)</span>}
+                        </Label>
+                        {renderFieldInput(field.id, field.label, field.type, field.options, true, field.is_sensitive)}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </PageContent>
 
-      {/* Edit Dialog */}
-      {employee && (
-        <EditEmployeeDialog
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          employee={employee}
-          onSuccess={fetchEmployee}
-        />
-      )}
-
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {employee.full_name} from your organization.
-              This action cannot be undone.
+              This action cannot be undone. This will permanently delete the employee
+              record for {employee.full_name}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -528,7 +601,7 @@ export default function EmployeeDetail() {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
@@ -538,9 +611,9 @@ export default function EmployeeDetail() {
 
       {/* Start Run Dialog */}
       <StartRunDialog
+        employeeId={employee.id}
         open={startRunDialogOpen}
         onOpenChange={setStartRunDialogOpen}
-        employeeId={id}
       />
     </>
   );
