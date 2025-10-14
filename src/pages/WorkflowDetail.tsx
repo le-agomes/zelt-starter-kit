@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, ArrowLeft, ListTodo, ArrowUp, ArrowDown, Edit, Trash2, Copy } from 'lucide-react';
+import { Plus, ArrowLeft, ListTodo, ArrowUp, ArrowDown, Edit, Trash2, Copy, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { NewStepDialog } from '@/components/NewStepDialog';
 import { EditStepDialog } from '@/components/EditStepDialog';
+import { StartRunDialog } from '@/components/StartRunDialog';
 
 interface Workflow {
   id: string;
@@ -39,6 +40,7 @@ export default function WorkflowDetail() {
   const [editingStep, setEditingStep] = useState<WorkflowStep | null>(null);
   const [deletingStepId, setDeletingStepId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+  const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
 
   const fetchWorkflow = async () => {
     if (!id) return;
@@ -236,6 +238,15 @@ export default function WorkflowDetail() {
                 variant="outline" 
                 size="lg" 
                 className="gap-2"
+                onClick={() => setStartRunDialogOpen(true)}
+              >
+                <Play className="h-5 w-5" />
+                Start for Employee
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="gap-2"
                 onClick={handleDuplicateWorkflow}
                 disabled={duplicating}
               >
@@ -381,6 +392,12 @@ export default function WorkflowDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <StartRunDialog
+        open={startRunDialogOpen}
+        onOpenChange={setStartRunDialogOpen}
+        workflowId={id}
+      />
     </PageContent>
   );
 }

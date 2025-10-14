@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { EditEmployeeDialog } from '@/components/EditEmployeeDialog';
 import { PageContent } from '@/components/PageContent';
+import { StartRunDialog } from '@/components/StartRunDialog';
 import {
   ArrowLeft,
   Mail,
@@ -47,6 +48,7 @@ import {
   Check,
   ChevronsUpDown,
   UserCheck,
+  Play,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -105,6 +107,7 @@ export default function EmployeeDetail() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
   const [isSavingManager, setIsSavingManager] = useState(false);
+  const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
 
   const fetchEmployee = async () => {
     if (!id) return;
@@ -469,7 +472,16 @@ export default function EmployeeDetail() {
           </Card>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-3 gap-3 pt-2">
+            <Button
+              variant="default"
+              size="lg"
+              className="h-12"
+              onClick={() => setStartRunDialogOpen(true)}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Start Workflow
+            </Button>
             <Button
               variant="outline"
               size="lg"
@@ -523,6 +535,13 @@ export default function EmployeeDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Start Run Dialog */}
+      <StartRunDialog
+        open={startRunDialogOpen}
+        onOpenChange={setStartRunDialogOpen}
+        employeeId={id}
+      />
     </>
   );
 }
