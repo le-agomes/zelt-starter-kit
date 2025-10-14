@@ -7,8 +7,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle2, Clock, FileText } from 'lucide-react';
-import { format } from 'date-fns';
+import { CheckCircle2, Clock, FileText, AlertCircle } from 'lucide-react';
+import { format, isPast } from 'date-fns';
 
 interface MyTask {
   id: string;
@@ -27,19 +27,42 @@ export default function MyTasks() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<MyTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    
+    const fetchProfile = async () => {
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
+
+      setProfileId(data?.id || null);
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    if (!profileId) return;
     
     const fetchMyTasks = async () => {
       setLoading(true);
       try {
         const { data: stepInstances, error: stepError } = await (supabase as any)
           .from('run_step_instances')
-          .select('id, status, due_at, completed_at, run_id, workflow_step_id')
-          .eq('assigned_to', user.id)
-          .in('status', ['pending', 'in_progress'])
-          .order('due_at', { ascending: true, nullsFirst: false });
+          .select('id, status, due_at, completed_at, run_id, workflow_step_id, created_at')
+          .eq('assigned_to', profileId)
+          .in('status', ['pending', 'active'])
+          .order('due_at', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: false });
 
         if (stepError) throw stepError;
 
@@ -109,7 +132,7 @@ export default function MyTasks() {
     };
 
     fetchMyTasks();
-  }, [user]);
+  }, [profileId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -160,39 +183,48 @@ export default function MyTasks() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {tasks.map((task) => (
-            <Card
-              key={task.id}
-              className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => navigate(`/app/runs/${task.run_id}`)}
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-start gap-2 flex-1 min-w-0">
-                  <div className="mt-0.5 text-muted-foreground">
-                    {getTypeIcon(task.step_type)}
+          {tasks.map((task) => {
+            const isOverdue = task.due_at && isPast(new Date(task.due_at));
+            
+            return (
+              <Card
+                key={task.id}
+                className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => navigate(`/app/runs/${task.run_id}`)}
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <div className="mt-0.5 text-muted-foreground">
+                      {getTypeIcon(task.step_type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm mb-1 truncate">
+                        {task.step_title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {task.employee_name} • {task.workflow_name}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm mb-1 truncate">
-                      {task.step_title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {task.employee_name} • {task.workflow_name}
-                    </p>
-                  </div>
+                  <Badge variant="secondary" className={getStatusColor(task.status)}>
+                    {task.status}
+                  </Badge>
                 </div>
-                <Badge variant="secondary" className={getStatusColor(task.status)}>
-                  {task.status}
-                </Badge>
-              </div>
-              
-              {task.due_at && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3">
-                  <Clock className="h-3 w-3" />
-                  <span>Due {format(new Date(task.due_at), 'MMM d, yyyy')}</span>
+                
+                <div className="flex items-center gap-2 flex-wrap">
+                  {task.due_at && (
+                    <Badge 
+                      variant={isOverdue ? "destructive" : "outline"}
+                      className="flex items-center gap-1.5 text-xs"
+                    >
+                      {isOverdue ? <AlertCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                      <span>{isOverdue ? 'Overdue' : `Due ${format(new Date(task.due_at), 'MMM d, yyyy')}`}</span>
+                    </Badge>
+                  )}
                 </div>
-              )}
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </PageContent>
