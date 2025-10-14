@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     // Verify employee belongs to user's org
     const { data: employee, error: employeeError } = await supabase
       .from('employees')
-      .select('id')
+      .select('id, manager_profile_id')
       .eq('id', employee_id)
       .eq('org_id', profile.org_id)
       .single();
@@ -107,16 +107,67 @@ Deno.serve(async (req) => {
 
     console.log('Creating', steps?.length || 0, 'step instances');
 
-    // Create run_step_instances for each step
-    const stepInstances = steps?.map(step => ({
-      run_id: run.id,
-      workflow_step_id: step.id,
-      ordinal: step.ordinal,
-      org_id: profile.org_id,
-      status: 'pending',
-      assigned_to: null,
-      payload: step.config || {},
-    })) || [];
+    // Helper function to resolve assignment
+    const resolveAssignment = async (step: any): Promise<string | null> => {
+      const assignment = step.config?.assignment;
+      
+      if (!assignment || !assignment.mode) {
+        console.log('No assignment config for step', step.id);
+        return null;
+      }
+
+      if (assignment.mode === 'user' && assignment.user_id) {
+        console.log('Assigning to user:', assignment.user_id);
+        return assignment.user_id;
+      }
+
+      if (assignment.mode === 'role' && assignment.role) {
+        console.log('Assigning by role:', assignment.role);
+        const { data: roleProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('org_id', profile.org_id)
+          .eq('role', assignment.role)
+          .limit(1)
+          .maybeSingle();
+        
+        if (roleProfile) {
+          console.log('Found profile with role:', roleProfile.id);
+          return roleProfile.id;
+        }
+        console.log('No profile found with role:', assignment.role);
+        return null;
+      }
+
+      if (assignment.mode === 'dynamic' && assignment.strategy === 'employee_manager') {
+        console.log('Assigning to employee manager');
+        if (employee.manager_profile_id) {
+          console.log('Manager found:', employee.manager_profile_id);
+          return employee.manager_profile_id;
+        }
+        console.log('No manager assigned to employee');
+        return null;
+      }
+
+      console.log('Unknown assignment config:', assignment);
+      return null;
+    };
+
+    // Create run_step_instances for each step with resolved assignments
+    const stepInstancesPromises = steps?.map(async (step) => {
+      const assigned_to = await resolveAssignment(step);
+      return {
+        run_id: run.id,
+        workflow_step_id: step.id,
+        ordinal: step.ordinal,
+        org_id: profile.org_id,
+        status: 'pending',
+        assigned_to,
+        payload: step.config || {},
+      };
+    }) || [];
+
+    const stepInstances = await Promise.all(stepInstancesPromises);
 
     if (stepInstances.length > 0) {
       const { error: instancesError } = await supabase
