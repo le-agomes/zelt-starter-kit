@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,8 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { CheckCircle2, Clock, FileText, AlertCircle, ExternalLink } from 'lucide-react';
-import { format, isPast } from 'date-fns';
+import { CheckCircle2, Clock, FileText, AlertCircle, ExternalLink, Search } from 'lucide-react';
+import { format, isPast, isToday, startOfDay, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 interface MyTask {
@@ -32,6 +33,8 @@ interface MyTask {
   employee_name: string;
 }
 
+type FilterType = 'all' | 'due_today' | 'overdue' | 'completed';
+
 export default function MyTasks() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +45,8 @@ export default function MyTasks() {
   const [selectedTask, setSelectedTask] = useState<MyTask | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCompleting, setIsCompleting] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -70,11 +75,22 @@ export default function MyTasks() {
     const fetchMyTasks = async () => {
       setLoading(true);
       try {
-        const { data: stepInstances, error: stepError } = await (supabase as any)
+        let query = (supabase as any)
           .from('run_step_instances')
           .select('id, status, due_at, completed_at, run_id, workflow_step_id, created_at')
-          .eq('assigned_to', profileId)
-          .in('status', ['pending', 'active'])
+          .eq('assigned_to', profileId);
+
+        // Apply status filter based on selected filter type
+        if (filter === 'completed') {
+          const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+          query = query
+            .eq('status', 'done')
+            .gte('completed_at', thirtyDaysAgo);
+        } else {
+          query = query.in('status', ['pending', 'active']);
+        }
+
+        const { data: stepInstances, error: stepError } = await query
           .order('due_at', { ascending: true, nullsFirst: false })
           .order('created_at', { ascending: false });
 
@@ -147,7 +163,31 @@ export default function MyTasks() {
     };
 
     fetchMyTasks();
-  }, [profileId]);
+  }, [profileId, filter]);
+
+  // Filter tasks based on selected filter and search query
+  const filteredTasks = useMemo(() => {
+    let filtered = [...tasks];
+
+    // Apply filter type
+    if (filter === 'due_today') {
+      filtered = filtered.filter((task) => task.due_at && isToday(new Date(task.due_at)));
+    } else if (filter === 'overdue') {
+      filtered = filtered.filter((task) => task.due_at && isPast(new Date(task.due_at)) && !isToday(new Date(task.due_at)));
+    }
+
+    // Apply search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.step_title.toLowerCase().includes(query) ||
+          task.employee_name.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [tasks, filter, searchQuery]);
 
   const handleComplete = async (taskId: string) => {
     setIsCompleting(taskId);
@@ -223,23 +263,61 @@ export default function MyTasks() {
         description="Tasks assigned to you"
       />
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
+      <div className="space-y-4">
+        {/* Filters */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+            {(['all', 'due_today', 'overdue', 'completed'] as FilterType[]).map((filterType) => (
+              <Button
+                key={filterType}
+                variant={filter === filterType ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter(filterType)}
+                className="whitespace-nowrap"
+              >
+                {filterType === 'all' && 'All'}
+                {filterType === 'due_today' && 'Due today'}
+                {filterType === 'overdue' && 'Overdue'}
+                {filterType === 'completed' && 'Completed'}
+              </Button>
+            ))}
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks or employees..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
-      ) : tasks.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-16 text-center">
-          <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">All caught up!</h3>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            You don't have any pending tasks right now. New tasks will appear here when they're assigned to you.
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {tasks.map((task) => {
+
+        {/* Loading state */}
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-32 w-full" />
+            ))}
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <Card className="flex flex-col items-center justify-center py-16 text-center">
+            <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {searchQuery ? 'No tasks found' : filter === 'completed' ? 'No completed tasks' : 'All caught up!'}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              {searchQuery 
+                ? 'Try adjusting your search or filters' 
+                : filter === 'completed'
+                ? "You haven't completed any tasks in the last 30 days."
+                : "You don't have any pending tasks right now. New tasks will appear here when they're assigned to you."}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filteredTasks.map((task) => {
             const isOverdue = task.due_at && isPast(new Date(task.due_at));
             
             return (
@@ -306,7 +384,8 @@ export default function MyTasks() {
             );
           })}
         </div>
-      )}
+        )}
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
