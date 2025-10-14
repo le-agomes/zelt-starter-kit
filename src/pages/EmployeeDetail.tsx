@@ -32,6 +32,7 @@ import {
   Save,
   X,
   EyeOff,
+  User,
 } from 'lucide-react';
 
 const getInitials = (name: string) => {
@@ -101,6 +102,7 @@ export default function EmployeeDetail() {
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
   const [userRole, setUserRole] = useState<string>('employee');
+  const [availableManagers, setAvailableManagers] = useState<any[]>([]);
 
   const fetchEmployee = async () => {
     if (!id) return;
@@ -156,7 +158,7 @@ export default function EmployeeDetail() {
         }
       }
 
-      // Fetch user role
+      // Fetch user role and available managers
       if (user) {
         const { data: profileData } = await supabase
           .from('profiles')
@@ -166,6 +168,19 @@ export default function EmployeeDetail() {
         
         if (profileData?.role) {
           setUserRole(profileData.role);
+        }
+
+        // Fetch available managers (all users in the same org)
+        if (empData.org_id) {
+          const { data: managersData } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('org_id', empData.org_id)
+            .order('full_name');
+          
+          if (managersData) {
+            setAvailableManagers(managersData);
+          }
         }
       }
     } catch (error) {
@@ -541,7 +556,165 @@ export default function EmployeeDetail() {
           </CardContent>
         </Card>
 
-        {/* Profile Sections */}
+        {/* Core Fields */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Core Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Job Title */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Job Title</Label>
+                {isEditing ? (
+                  <Input
+                    value={getFieldValue('job_title')}
+                    onChange={(e) => setFieldValue('job_title', e.target.value)}
+                    placeholder="Enter job title"
+                  />
+                ) : (
+                  <p className="text-sm">{employee.job_title || '—'}</p>
+                )}
+              </div>
+
+              {/* Department */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Department</Label>
+                {isEditing ? (
+                  <Input
+                    value={getFieldValue('department')}
+                    onChange={(e) => setFieldValue('department', e.target.value)}
+                    placeholder="Enter department"
+                  />
+                ) : (
+                  <p className="text-sm">{employee.department || '—'}</p>
+                )}
+              </div>
+
+              {/* Location */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Location</Label>
+                {isEditing ? (
+                  <Input
+                    value={getFieldValue('location')}
+                    onChange={(e) => setFieldValue('location', e.target.value)}
+                    placeholder="Enter location"
+                  />
+                ) : (
+                  <p className="text-sm">{employee.location || '—'}</p>
+                )}
+              </div>
+
+              {/* Start Date */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Start Date</Label>
+                {isEditing ? (
+                  <Input
+                    type="date"
+                    value={getFieldValue('start_date')}
+                    onChange={(e) => setFieldValue('start_date', e.target.value)}
+                  />
+                ) : (
+                  <p className="text-sm">{employee.start_date || '—'}</p>
+                )}
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                {isEditing ? (
+                  <Select 
+                    value={getFieldValue('status')} 
+                    onValueChange={(v) => setFieldValue('status', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="on_leave">On Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm">{getStatusLabel(employee.status)}</p>
+                )}
+              </div>
+
+              {/* Manager */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Manager</Label>
+                {isEditing ? (
+                  <Select 
+                    value={getFieldValue('manager_profile_id') || ''} 
+                    onValueChange={(v) => setFieldValue('manager_profile_id', v || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select manager">
+                        {getFieldValue('manager_profile_id') ? (
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span>
+                              {availableManagers.find(m => m.id === getFieldValue('manager_profile_id'))?.full_name || 'Select manager'}
+                            </span>
+                          </div>
+                        ) : (
+                          'Select manager'
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No manager</SelectItem>
+                      {availableManagers.map((manager) => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span>{manager.full_name || manager.email}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm">
+                    {employee.manager_profile_id ? (
+                      <span className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {availableManagers.find(m => m.id === employee.manager_profile_id)?.full_name || 
+                         availableManagers.find(m => m.id === employee.manager_profile_id)?.email || 
+                         '—'}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </p>
+                )}
+              </div>
+
+              {/* Work Email */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Work Email</Label>
+                {isEditing ? (
+                  <Input
+                    type="email"
+                    value={getFieldValue('work_email')}
+                    onChange={(e) => setFieldValue('work_email', e.target.value)}
+                    placeholder="Enter work email"
+                  />
+                ) : (
+                  <p className="text-sm">{employee.work_email || '—'}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Details */}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">Additional Details</h2>
+          <p className="text-sm text-muted-foreground">Configurable fields based on your organization settings</p>
+        </div>
+
         <div className="space-y-6">
           {SECTIONS.map(section => {
             const systemFieldKeys = getSystemFieldsBySection(section);
