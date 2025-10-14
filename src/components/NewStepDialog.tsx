@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,25 @@ export function NewStepDialog({ workflowId, maxOrdinal, onStepCreated, trigger }
   const [config, setConfig] = useState<any>({});
   const [checklist, setChecklist] = useState<Array<{ text: string; done: boolean }>>([]);
   const [signers, setSigners] = useState<string[]>([]);
+  
+  // Assignment config
+  const [assignmentMode, setAssignmentMode] = useState<'role' | 'user' | 'dynamic'>('role');
+  const [assignmentRole, setAssignmentRole] = useState<string>('employee');
+  const [assignmentUserId, setAssignmentUserId] = useState<string>('');
+  const [assignmentStrategy, setAssignmentStrategy] = useState<string>('employee_manager');
+  const [profiles, setProfiles] = useState<any[]>([]);
+
+  // Fetch profiles for user assignment
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name, email')
+        .order('full_name');
+      if (data) setProfiles(data);
+    };
+    if (open) fetchProfiles();
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,25 +81,46 @@ export function NewStepDialog({ workflowId, maxOrdinal, onStepCreated, trigger }
       return;
     }
 
+    // Validate assignment for task, email, signature
+    if (['task', 'email', 'signature'].includes(formData.type)) {
+      if (assignmentMode === 'user' && !assignmentUserId) {
+        setErrors({ assignment: 'Please select a user for assignment' });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
+      // Build assignment object
+      const assignment: any = { mode: assignmentMode };
+      if (assignmentMode === 'role') {
+        assignment.role = assignmentRole;
+      } else if (assignmentMode === 'user') {
+        assignment.user_id = assignmentUserId;
+      } else if (assignmentMode === 'dynamic') {
+        assignment.strategy = assignmentStrategy;
+      }
+
       // Build config based on type
-      let finalConfig = {};
+      let finalConfig: any = {};
       if (formData.type === 'email') {
         finalConfig = {
           subject: config.subject || '',
           body: config.body || '',
-          to: config.to || { mode: 'role', role: 'employee' }
+          to: config.to || { mode: 'role', role: 'employee' },
+          assignment
         };
       } else if (formData.type === 'task') {
         finalConfig = {
           description: config.description || '',
-          checklist: checklist
+          checklist: checklist,
+          assignment
         };
       } else if (formData.type === 'signature') {
         finalConfig = {
           document_id: config.document_id || '',
-          signers: signers
+          signers: signers,
+          assignment
         };
       } else if (formData.type === 'wait') {
         finalConfig = {
@@ -113,6 +153,10 @@ export function NewStepDialog({ workflowId, maxOrdinal, onStepCreated, trigger }
       setConfig({});
       setChecklist([]);
       setSigners([]);
+      setAssignmentMode('role');
+      setAssignmentRole('employee');
+      setAssignmentUserId('');
+      setAssignmentStrategy('employee_manager');
       onStepCreated();
     } catch (error) {
       console.error('Error creating step:', error);
@@ -370,6 +414,86 @@ export function NewStepDialog({ workflowId, maxOrdinal, onStepCreated, trigger }
                 onChange={(e) => setConfig({ ...config, hours: parseInt(e.target.value) || 0 })}
               />
             </FormField>
+          )}
+
+          {/* Assignment section - required for task, email, signature */}
+          {['task', 'email', 'signature'].includes(formData.type) && (
+            <>
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium mb-3">Assignment</h3>
+                <FormField label="Assignment Mode" required error={errors.assignment}>
+                  <Select
+                    value={assignmentMode}
+                    onValueChange={(value: any) => setAssignmentMode(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="role">By Role</SelectItem>
+                      <SelectItem value="user">Specific User</SelectItem>
+                      <SelectItem value="dynamic">Dynamic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+
+                {assignmentMode === 'role' && (
+                  <FormField label="Role" required className="mt-3">
+                    <Select
+                      value={assignmentRole}
+                      onValueChange={setAssignmentRole}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="hr">HR</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="it">IT</SelectItem>
+                        <SelectItem value="employee">Employee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
+
+                {assignmentMode === 'user' && (
+                  <FormField label="User" required className="mt-3">
+                    <Select
+                      value={assignmentUserId}
+                      onValueChange={setAssignmentUserId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.full_name || profile.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
+
+                {assignmentMode === 'dynamic' && (
+                  <FormField label="Strategy" required className="mt-3">
+                    <Select
+                      value={assignmentStrategy}
+                      onValueChange={setAssignmentStrategy}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="employee_manager">Employee's Manager</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
+              </div>
+            </>
           )}
 
           <div className="flex justify-end gap-2 pt-4">
