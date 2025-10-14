@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { ArrowUp, ArrowDown, Save, Loader2, Plus, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +23,17 @@ interface FieldConfig {
 type EmployeeSystemFields = Record<string, FieldConfig>;
 
 const SECTIONS = ['Identity', 'Contact', 'Employment', 'Emergency', 'Profile', 'Documents', 'Other'];
+
+// Core fields that are always visible and not configurable
+const CORE_FIELDS = [
+  'job_title',
+  'department',
+  'location',
+  'start_date',
+  'status',
+  'manager_profile_id',
+  'work_email'
+];
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
@@ -224,7 +236,7 @@ export default function EmployeeFieldsSettings() {
 
   const getFieldsBySection = (section: string) => {
     return Object.entries(fields)
-      .filter(([_, field]) => field.section === section)
+      .filter(([key, field]) => field.section === section && !CORE_FIELDS.includes(key))
       .sort((a, b) => a[1].ordinal - b[1].ordinal);
   };
 
@@ -428,101 +440,126 @@ export default function EmployeeFieldsSettings() {
             </Button>
           </div>
 
-          {SECTIONS.map(section => {
-            const sectionFields = getFieldsBySection(section);
-            
-            if (sectionFields.length === 0) return null;
-            
-            return (
-              <Card key={section}>
-                <CardHeader>
-                  <CardTitle>{section}</CardTitle>
-                  <CardDescription>
-                    Configure {section.toLowerCase()} fields for employees
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {sectionFields.map(([fieldName, fieldConfig], index) => (
-                      <div 
-                        key={fieldName}
-                        className="flex items-center gap-4 p-4 border rounded-lg bg-card"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <Label className="font-medium">
-                            {formatFieldName(fieldName)}
-                          </Label>
-                        </div>
+          {/* Core Fields Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Core Fields</CardTitle>
+              <CardDescription>
+                These fields are always visible on employee profiles and cannot be hidden
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {CORE_FIELDS.map((fieldKey) => (
+                  <Badge key={fieldKey} variant="secondary" className="text-sm py-1.5 px-3">
+                    {formatFieldName(fieldKey)}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor={`${fieldName}-visible`} className="text-sm text-muted-foreground">
-                            Visible
-                          </Label>
-                          <Switch
-                            id={`${fieldName}-visible`}
-                            checked={fieldConfig.visible}
-                            onCheckedChange={(checked) => 
-                              updateField(fieldName, { visible: checked })
-                            }
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor={`${fieldName}-required`} className="text-sm text-muted-foreground">
-                            Required
-                          </Label>
-                          <Switch
-                            id={`${fieldName}-required`}
-                            checked={fieldConfig.required}
-                            onCheckedChange={(checked) => 
-                              updateField(fieldName, { required: checked })
-                            }
-                          />
-                        </div>
-
-                        <Select
-                          value={fieldConfig.section}
-                          onValueChange={(value) => 
-                            updateField(fieldName, { section: value })
-                          }
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SECTIONS.map(sec => (
-                              <SelectItem key={sec} value={sec}>
-                                {sec}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => moveField(fieldName, 'up')}
-                            disabled={index === 0}
+          {/* Configurable System Fields */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurable System Fields</CardTitle>
+              <CardDescription>
+                Configure visibility and requirements for additional employee fields
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {SECTIONS.map(section => {
+                  const sectionFields = getFieldsBySection(section);
+                  
+                  if (sectionFields.length === 0) return null;
+                  
+                  return (
+                    <div key={section}>
+                      <h3 className="text-sm font-medium mb-3">{section}</h3>
+                      <div className="space-y-3">
+                        {sectionFields.map(([fieldName, fieldConfig], index) => (
+                          <div 
+                            key={fieldName}
+                            className="flex items-center gap-4 p-4 border rounded-lg bg-card"
                           >
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => moveField(fieldName, 'down')}
-                            disabled={index === sectionFields.length - 1}
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                        </div>
+                            <div className="flex-1 min-w-0">
+                              <Label className="font-medium">
+                                {formatFieldName(fieldName)}
+                              </Label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`${fieldName}-visible`} className="text-sm text-muted-foreground">
+                                Visible
+                              </Label>
+                              <Switch
+                                id={`${fieldName}-visible`}
+                                checked={fieldConfig.visible}
+                                onCheckedChange={(checked) => 
+                                  updateField(fieldName, { visible: checked })
+                                }
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`${fieldName}-required`} className="text-sm text-muted-foreground">
+                                Required
+                              </Label>
+                              <Switch
+                                id={`${fieldName}-required`}
+                                checked={fieldConfig.required}
+                                onCheckedChange={(checked) => 
+                                  updateField(fieldName, { required: checked })
+                                }
+                              />
+                            </div>
+
+                            <Select
+                              value={fieldConfig.section}
+                              onValueChange={(value) => 
+                                updateField(fieldName, { section: value })
+                              }
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SECTIONS.map(sec => (
+                                  <SelectItem key={sec} value={sec}>
+                                    {sec}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => moveField(fieldName, 'up')}
+                                disabled={index === 0}
+                              >
+                                <ArrowUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => moveField(fieldName, 'down')}
+                                disabled={index === sectionFields.length - 1}
+                              >
+                                <ArrowDown className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Custom Fields Section */}
           <Card>
