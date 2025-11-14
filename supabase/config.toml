@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.save-org-settings]
 verify_jwt = true
+
+[functions.cancel-run]
+verify_jwt = true

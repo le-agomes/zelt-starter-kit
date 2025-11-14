@@ -9,10 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Search, ChevronRight, PlayCircle } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Search, ChevronRight, PlayCircle, CalendarIcon, MoreVertical, Pause, Play, XCircle } from 'lucide-react';
 import { PageContent } from '@/components/PageContent';
 import { PageHeader } from '@/components/PageHeader';
 import { format } from 'date-fns';
+import { useRunActions } from '@/hooks/useRunActions';
+import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
 type RunStatus = 'running' | 'completed' | 'paused' | 'cancelled';
 
@@ -45,6 +52,10 @@ export default function Runs() {
   const [statusFilter, setStatusFilter] = useState<RunStatus | 'all'>('all');
   const [workflowFilter, setWorkflowFilter] = useState<string>('all');
   const [assignedToMe, setAssignedToMe] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [runToCancel, setRunToCancel] = useState<string | null>(null);
+
+  const { pauseRun, resumeRun, cancelRun, isPausing, isCancelling } = useRunActions();
 
   // Fetch current user profile
   const { data: profile } = useQuery({
@@ -145,10 +156,26 @@ export default function Runs() {
         .includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || run.status === statusFilter;
       const matchesWorkflow = workflowFilter === 'all' || run.workflow_id === workflowFilter;
+      
+      // Date range filter
+      let matchesDateRange = true;
+      if (dateRange?.from) {
+        const runDate = new Date(run.started_at);
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to);
+          toDate.setHours(23, 59, 59, 999);
+          matchesDateRange = runDate >= fromDate && runDate <= toDate;
+        } else {
+          matchesDateRange = runDate >= fromDate;
+        }
+      }
 
-      return matchesSearch && matchesStatus && matchesWorkflow;
+      return matchesSearch && matchesStatus && matchesWorkflow && matchesDateRange;
     });
-  }, [runs, searchQuery, statusFilter, workflowFilter]);
+  }, [runs, searchQuery, statusFilter, workflowFilter, dateRange]);
 
   const statusCounts = useMemo(() => {
     if (!runs) return { all: 0, running: 0, completed: 0, paused: 0, cancelled: 0 };
@@ -240,6 +267,54 @@ export default function Runs() {
           </SelectContent>
         </Select>
 
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "h-10 w-full justify-start text-left font-normal bg-card border-border",
+                !dateRange && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
+                  </>
+                ) : (
+                  format(dateRange.from, "MMM d, yyyy")
+                )
+              ) : (
+                <span>Filter by date range</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={2}
+              className="pointer-events-auto"
+            />
+            {dateRange && (
+              <div className="p-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setDateRange(undefined)}
+                >
+                  Clear date range
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
         <div className="flex items-center justify-between bg-card border border-border rounded-lg px-4 py-3">
           <Label htmlFor="assigned-to-me" className="text-sm font-medium cursor-pointer">
             Assigned to me
@@ -283,38 +358,113 @@ export default function Runs() {
         ) : (
           <div className="space-y-2">
             {filteredRuns.map((run) => (
-              <Link key={run.id} to={`/app/runs/${run.id}`}>
-                <Card className="border-border transition-colors hover:bg-accent/5 active:bg-accent/10">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-foreground truncate">
-                            {run.employee_name}
-                          </h3>
-                          <Badge 
-                            variant={STATUS_COLORS[run.status] as any}
-                            className="text-xs shrink-0"
-                          >
-                            {STATUS_LABELS[run.status]}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {run.workflow_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground/80 mt-1">
-                          Started {format(new Date(run.started_at), 'MMM d, yyyy h:mm a')}
-                        </p>
+              <Card key={run.id} className="border-border transition-colors hover:bg-accent/5">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Link to={`/app/runs/${run.id}`} className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-foreground truncate">
+                          {run.employee_name}
+                        </h3>
+                        <Badge 
+                          variant={STATUS_COLORS[run.status] as any}
+                          className="text-xs shrink-0"
+                        >
+                          {STATUS_LABELS[run.status]}
+                        </Badge>
                       </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {run.workflow_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground/80 mt-1">
+                        Started {format(new Date(run.started_at), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    </Link>
 
-                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          disabled={isPausing || isCancelling}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {run.status === 'running' && (
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              pauseRun(run.id);
+                            }}
+                            disabled={isPausing}
+                          >
+                            <Pause className="mr-2 h-4 w-4" />
+                            Pause Run
+                          </DropdownMenuItem>
+                        )}
+                        {run.status === 'paused' && (
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              resumeRun(run.id);
+                            }}
+                            disabled={isPausing}
+                          >
+                            <Play className="mr-2 h-4 w-4" />
+                            Resume Run
+                          </DropdownMenuItem>
+                        )}
+                        {(run.status === 'running' || run.status === 'paused') && (
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRunToCancel(run.id);
+                            }}
+                            disabled={isCancelling}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Run
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={!!runToCancel} onOpenChange={() => setRunToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Run</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this run? This action cannot be undone and all pending steps will be stopped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, keep it</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (runToCancel) {
+                  cancelRun(runToCancel);
+                  setRunToCancel(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, cancel run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </PageContent>
   );
