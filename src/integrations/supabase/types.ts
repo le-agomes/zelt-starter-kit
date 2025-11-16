@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      employee_field_values: {
+        Row: {
+          employee_id: string
+          field_id: string
+          value: Json
+        }
+        Insert: {
+          employee_id: string
+          field_id: string
+          value: Json
+        }
+        Update: {
+          employee_id?: string
+          field_id?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_field_values_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_field_values_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "employee_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_fields: {
+        Row: {
+          active: boolean | null
+          id: string
+          is_sensitive: boolean | null
+          key: string
+          label: string
+          options: Json | null
+          ordinal: number | null
+          org_id: string
+          required: boolean | null
+          section: string | null
+          type: Database["public"]["Enums"]["field_type"]
+        }
+        Insert: {
+          active?: boolean | null
+          id?: string
+          is_sensitive?: boolean | null
+          key: string
+          label: string
+          options?: Json | null
+          ordinal?: number | null
+          org_id: string
+          required?: boolean | null
+          section?: string | null
+          type: Database["public"]["Enums"]["field_type"]
+        }
+        Update: {
+          active?: boolean | null
+          id?: string
+          is_sensitive?: boolean | null
+          key?: string
+          label?: string
+          options?: Json | null
+          ordinal?: number | null
+          org_id?: string
+          required?: boolean | null
+          section?: string | null
+          type?: Database["public"]["Enums"]["field_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_fields_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address_line1: string | null
@@ -42,6 +125,7 @@ export type Database = {
           phone_mobile: string | null
           postal_code: string | null
           preferred_name: string | null
+          profile_id: string | null
           pronouns: string | null
           start_date: string | null
           state: string | null
@@ -76,6 +160,7 @@ export type Database = {
           phone_mobile?: string | null
           postal_code?: string | null
           preferred_name?: string | null
+          profile_id?: string | null
           pronouns?: string | null
           start_date?: string | null
           state?: string | null
@@ -110,6 +195,7 @@ export type Database = {
           phone_mobile?: string | null
           postal_code?: string | null
           preferred_name?: string | null
+          profile_id?: string | null
           pronouns?: string | null
           start_date?: string | null
           state?: string | null
@@ -130,6 +216,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -550,10 +643,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_org_id: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -565,10 +655,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      user_can_access_org: {
-        Args: { _org_id: string }
-        Returns: boolean
-      }
+      user_can_access_org: { Args: { _org_id: string }; Returns: boolean }
     }
     Enums: {
       employee_status:
@@ -578,6 +665,14 @@ export type Database = {
         | "candidate"
         | "onboarding"
         | "offboarded"
+      field_type:
+        | "text"
+        | "number"
+        | "date"
+        | "select"
+        | "multiselect"
+        | "checkbox"
+        | "file"
       step_type: "form" | "task" | "email" | "signature" | "wait"
       user_role: "admin" | "hr" | "manager" | "it" | "employee"
     }
@@ -714,6 +809,15 @@ export const Constants = {
         "candidate",
         "onboarding",
         "offboarded",
+      ],
+      field_type: [
+        "text",
+        "number",
+        "date",
+        "select",
+        "multiselect",
+        "checkbox",
+        "file",
       ],
       step_type: ["form", "task", "email", "signature", "wait"],
       user_role: ["admin", "hr", "manager", "it", "employee"],

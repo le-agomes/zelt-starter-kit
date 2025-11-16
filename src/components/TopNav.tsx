@@ -46,6 +46,12 @@ export function TopNav() {
               >
                 Workflows
               </Link>
+              <Link
+                to="/app/runs"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Runs
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">

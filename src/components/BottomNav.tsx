@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, Users, FileText, CheckSquare } from 'lucide-react';
+import { Home, LayoutDashboard, Users, FileText, PlayCircle, CheckSquare } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -6,6 +6,7 @@ const navItems = [
   { to: '/app/dashboard', icon: Home, label: 'Home' },
   { to: '/app/employees', icon: Users, label: 'Employees' },
   { to: '/app/workflows', icon: FileText, label: 'Workflows' },
+  { to: '/app/runs', icon: PlayCircle, label: 'Runs' },
   { to: '/app/my-tasks', icon: CheckSquare, label: 'My Tasks' },
 ];
 
