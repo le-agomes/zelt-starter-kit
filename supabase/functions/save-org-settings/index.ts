@@ -38,10 +38,10 @@ Deno.serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    // Get user's profile to verify permissions and get org_id
+    // Get user's profile to get org_id
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
-      .select('org_id, role')
+      .select('org_id')
       .eq('id', user.id)
       .single();
 
@@ -53,9 +53,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user has admin or hr role
-    if (profile.role !== 'admin' && profile.role !== 'hr') {
-      console.error('Permission denied for role:', profile.role);
+    // Check if user has admin or hr role from user_roles table
+    const { data: userRoles, error: rolesError } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'hr']);
+
+    if (rolesError) {
+      console.error('Error fetching user roles:', rolesError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify permissions' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!userRoles || userRoles.length === 0) {
+      console.error('Permission denied - user has no admin or hr role');
       return new Response(
         JSON.stringify({ error: 'Permission denied. Only admin and HR can update settings.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
