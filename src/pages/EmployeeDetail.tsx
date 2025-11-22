@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PageContent } from '@/components/PageContent';
 import { StartRunDialog } from '@/components/StartRunDialog';
+import { SendFormRequestDialog } from '@/components/SendFormRequestDialog';
 import {
   ArrowLeft,
   Edit,
@@ -33,6 +34,7 @@ import {
   X,
   EyeOff,
   User,
+  Mail,
 } from 'lucide-react';
 
 const getInitials = (name: string) => {
@@ -95,6 +97,7 @@ export default function EmployeeDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
+  const [sendFormDialogOpen, setSendFormDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [systemFields, setSystemFields] = useState<Record<string, FieldConfig>>({});
@@ -514,6 +517,16 @@ export default function EmployeeDetail() {
                   <Play className="h-4 w-4 mr-2" />
                   Start Workflow
                 </Button>
+                {(userRole === 'admin' || userRole === 'hr') && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setSendFormDialogOpen(true)}
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send Form
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -787,6 +800,20 @@ export default function EmployeeDetail() {
         employeeId={employee.id}
         open={startRunDialogOpen}
         onOpenChange={setStartRunDialogOpen}
+      />
+
+      {/* Send Form Request Dialog */}
+      <SendFormRequestDialog
+        employeeId={employee.id}
+        open={sendFormDialogOpen}
+        onClose={() => setSendFormDialogOpen(false)}
+        onSuccess={() => {
+          setSendFormDialogOpen(false);
+          toast({
+            title: 'Success',
+            description: 'Form request sent successfully',
+          });
+        }}
       />
     </>
   );
