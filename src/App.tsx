@@ -25,6 +25,7 @@ import Chat from "./pages/Chat";
 import SignIn from "./pages/SignIn";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -54,8 +55,7 @@ function App() {
                 <Route path="/app/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
                 <Route path="/app/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="/app/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-                <Route path="/app/settings/employee-fields" element={<ProtectedRoute><EmployeeFieldsSettings /></ProtectedRoute>} />
-                <Route path="/app/forms/templates" element={<ProtectedRoute><FormTemplates /></ProtectedRoute>} />
+                <Route path="/app/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/app/forms/templates/new" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
                 <Route path="/app/forms/templates/:id/edit" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
                 <Route path="/app/my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
