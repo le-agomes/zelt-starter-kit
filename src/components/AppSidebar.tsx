@@ -18,7 +18,6 @@ const navItems = [
   { to: '/app/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/app/employees', icon: Users, label: 'Employees' },
   { to: '/app/chat', icon: MessageSquare, label: 'Chat' },
-  { to: '/app/forms/templates', icon: FileText, label: 'Forms' },
   { to: '/app/my-requests', icon: ClipboardList, label: 'My Requests' },
   { to: '/app/my-tasks', icon: CheckSquare, label: 'My Tasks' },
 ];
@@ -59,9 +58,9 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive('/app/settings')}>
-                  <Link to="/app/settings/employee-fields">
+                  <Link to="/app/settings">
                     <Settings />
-                    <span>Employee Fields</span>
+                    <span>Settings</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
