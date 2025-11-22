@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, MessageSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,12 @@ export function TopNav() {
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 Employees
+              </Link>
+              <Link
+                to="/app/chat"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Chat
               </Link>
               <Link
                 to="/app/workflows"
