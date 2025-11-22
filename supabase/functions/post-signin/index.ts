@@ -76,13 +76,83 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Profile doesn't exist - create org and profile using service role to bypass RLS
-    console.log('Creating new org and profile for user:', user.id);
+    // Profile doesn't exist - check if this is an invited employee first
+    console.log('No profile found, checking for employee record:', user.id);
     
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Check if an employee record exists with this email
+    const { data: existingEmployee, error: employeeCheckError } = await supabaseAdmin
+      .from('employees')
+      .select('id, org_id, email, work_email, personal_email')
+      .or(`email.eq.${user.email},work_email.eq.${user.email},personal_email.eq.${user.email}`)
+      .maybeSingle();
+
+    if (employeeCheckError) {
+      console.error('Error checking employee:', employeeCheckError);
+    }
+
+    if (existingEmployee) {
+      // Employee exists! Create profile in their organization
+      console.log('Found existing employee, creating profile in org:', existingEmployee.org_id);
+
+      const { data: newProfile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: user.id,
+          org_id: existingEmployee.org_id,
+          role: 'employee',
+          full_name: user.email || 'User',
+          email: user.email,
+        })
+        .select()
+        .single();
+
+      if (profileError || !newProfile) {
+        console.error('Error creating employee profile:', profileError);
+        throw new Error('Failed to create profile');
+      }
+
+      console.log('Created employee profile:', newProfile.id);
+
+      // Link the profile to the employee record
+      const { error: linkError } = await supabaseAdmin
+        .from('employees')
+        .update({ profile_id: user.id })
+        .eq('id', existingEmployee.id);
+
+      if (linkError) {
+        console.error('Error linking profile to employee:', linkError);
+      }
+
+      // Fetch the organization
+      const { data: org, error: orgError } = await supabaseAdmin
+        .from('organizations')
+        .select('*')
+        .eq('id', existingEmployee.org_id)
+        .single();
+
+      if (orgError) {
+        console.error('Error fetching organization:', orgError);
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          org: org,
+          profile: newProfile
+        }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // No employee record found - create new organization for admin user
+    console.log('No employee found, creating new org and admin profile for user:', user.id);
 
     // Create organization
     const { data: newOrg, error: orgError } = await supabaseAdmin
@@ -106,6 +176,7 @@ Deno.serve(async (req) => {
         org_id: newOrg.id,
         role: 'admin',
         full_name: user.email || 'User',
+        email: user.email,
       })
       .select()
       .single();
