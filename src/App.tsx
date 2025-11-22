@@ -21,6 +21,7 @@ import EmployeeFieldsSettings from "./pages/EmployeeFieldsSettings";
 import FormTemplates from "./pages/FormTemplates";
 import FormBuilder from "./pages/FormBuilder";
 import MyRequests from "./pages/MyRequests";
+import Chat from "./pages/Chat";
 import SignIn from "./pages/SignIn";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
@@ -51,6 +52,8 @@ function App() {
                 <Route path="/app/runs" element={<ProtectedRoute><Runs /></ProtectedRoute>} />
                 <Route path="/app/runs/:id" element={<ProtectedRoute><RunDetail /></ProtectedRoute>} />
                 <Route path="/app/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
+                <Route path="/app/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+                <Route path="/app/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="/app/settings/employee-fields" element={<ProtectedRoute><EmployeeFieldsSettings /></ProtectedRoute>} />
                 <Route path="/app/forms/templates" element={<ProtectedRoute><FormTemplates /></ProtectedRoute>} />
                 <Route path="/app/forms/templates/new" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
