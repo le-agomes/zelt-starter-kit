@@ -91,7 +91,7 @@ export default function Runs() {
   });
 
   // Fetch runs
-  const { data: runs, isLoading } = useQuery({
+  const { data: runs, isLoading, isFetching } = useQuery({
     queryKey: ['runs', profile?.id, assignedToMe],
     queryFn: async () => {
       if (!profile) return [];
@@ -323,6 +323,8 @@ export default function Runs() {
             id="assigned-to-me"
             checked={assignedToMe}
             onCheckedChange={setAssignedToMe}
+            disabled={isFetching}
+            aria-busy={isFetching}
           />
         </div>
       </div>
