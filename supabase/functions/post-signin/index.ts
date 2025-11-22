@@ -55,9 +55,82 @@ Deno.serve(async (req) => {
       throw profileCheckError;
     }
 
-    // If profile exists, return it with org
+    // If profile exists, check if it needs to be linked to an org
     if (existingProfile) {
-      console.log('Profile exists, returning:', existingProfile.id);
+      console.log('Profile exists:', existingProfile.id);
+      
+      // If profile has no org_id, try to link to employee
+      if (!existingProfile.org_id) {
+        console.log('Profile missing org_id, checking for employee record');
+        
+        const supabaseAdmin = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+
+        const { data: existingEmployee, error: employeeCheckError } = await supabaseAdmin
+          .from('employees')
+          .select('id, org_id, email, work_email, personal_email')
+          .or(`email.eq.${user.email},work_email.eq.${user.email},personal_email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (employeeCheckError) {
+          console.error('Error checking employee:', employeeCheckError);
+        }
+
+        if (existingEmployee) {
+          console.log('Found employee, linking to org:', existingEmployee.org_id);
+          
+          // Update profile with org_id and role
+          const { data: updatedProfile, error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ 
+              org_id: existingEmployee.org_id, 
+              role: 'employee',
+              email: user.email 
+            })
+            .eq('id', existingProfile.id)
+            .select('*, organizations(*)')
+            .single();
+
+          if (updateError || !updatedProfile) {
+            console.error('Error updating profile:', updateError);
+            throw new Error('Failed to update profile');
+          }
+
+          console.log('Updated profile with org:', updatedProfile.id);
+
+          // Link employee to profile
+          const { error: linkError } = await supabaseAdmin
+            .from('employees')
+            .update({ profile_id: user.id })
+            .eq('id', existingEmployee.id);
+
+          if (linkError) {
+            console.error('Error linking profile to employee:', linkError);
+          }
+
+          return new Response(
+            JSON.stringify({ 
+              org: updatedProfile.organizations,
+              profile: {
+                id: updatedProfile.id,
+                full_name: updatedProfile.full_name,
+                org_id: updatedProfile.org_id,
+                role: updatedProfile.role,
+                created_at: updatedProfile.created_at
+              }
+            }),
+            { 
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+      }
+
+      // Profile has org_id or no employee found, return as is
+      console.log('Profile exists with org, returning:', existingProfile.id);
       return new Response(
         JSON.stringify({ 
           org: existingProfile.organizations,
