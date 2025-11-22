@@ -52,6 +52,18 @@ export function TopNav() {
               >
                 Runs
               </Link>
+              <Link
+                to="/app/forms/templates"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Forms
+              </Link>
+              <Link
+                to="/app/my-requests"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                My Requests
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">

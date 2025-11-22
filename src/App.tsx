@@ -18,6 +18,9 @@ import Runs from "./pages/Runs";
 import RunDetail from "./pages/RunDetail";
 import MyTasks from "./pages/MyTasks";
 import EmployeeFieldsSettings from "./pages/EmployeeFieldsSettings";
+import FormTemplates from "./pages/FormTemplates";
+import FormBuilder from "./pages/FormBuilder";
+import MyRequests from "./pages/MyRequests";
 import SignIn from "./pages/SignIn";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
@@ -38,94 +41,21 @@ function App() {
                 <Route path="/auth/sign-in" element={<SignIn />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
-                <Route
-                  path="/app/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/employees"
-                  element={
-                    <ProtectedRoute>
-                      <Employees />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/employees/:id"
-                  element={
-                    <ProtectedRoute>
-                      <EmployeeDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/users"
-                  element={
-                    <ProtectedRoute>
-                      <Users />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/users/:id"
-                  element={
-                    <ProtectedRoute>
-                      <UserDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/workflows"
-                  element={
-                    <ProtectedRoute>
-                      <Workflows />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/workflows/:id"
-                  element={
-                    <ProtectedRoute>
-                      <WorkflowDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/runs"
-                  element={
-                    <ProtectedRoute>
-                      <Runs />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/runs/:id"
-                  element={
-                    <ProtectedRoute>
-                      <RunDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/my-tasks"
-                  element={
-                    <ProtectedRoute>
-                      <MyTasks />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/app/settings/employee-fields"
-                  element={
-                    <ProtectedRoute>
-                      <EmployeeFieldsSettings />
-                    </ProtectedRoute>
-                  }
-                />
+                <Route path="/app/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/app/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+                <Route path="/app/employees/:id" element={<ProtectedRoute><EmployeeDetail /></ProtectedRoute>} />
+                <Route path="/app/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+                <Route path="/app/users/:id" element={<ProtectedRoute><UserDetail /></ProtectedRoute>} />
+                <Route path="/app/workflows" element={<ProtectedRoute><Workflows /></ProtectedRoute>} />
+                <Route path="/app/workflows/:id" element={<ProtectedRoute><WorkflowDetail /></ProtectedRoute>} />
+                <Route path="/app/runs" element={<ProtectedRoute><Runs /></ProtectedRoute>} />
+                <Route path="/app/runs/:id" element={<ProtectedRoute><RunDetail /></ProtectedRoute>} />
+                <Route path="/app/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
+                <Route path="/app/settings/employee-fields" element={<ProtectedRoute><EmployeeFieldsSettings /></ProtectedRoute>} />
+                <Route path="/app/forms/templates" element={<ProtectedRoute><FormTemplates /></ProtectedRoute>} />
+                <Route path="/app/forms/templates/new" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
+                <Route path="/app/forms/templates/:id/edit" element={<ProtectedRoute><FormBuilder /></ProtectedRoute>} />
+                <Route path="/app/my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppShell>

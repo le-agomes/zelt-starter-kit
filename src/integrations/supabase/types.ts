@@ -14,6 +14,139 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_conversations: {
+        Row: {
+          archived: boolean | null
+          created_at: string | null
+          employee_id: string | null
+          employee_profile_id: string | null
+          hr_user_id: string | null
+          id: string
+          last_message_at: string | null
+          org_id: string
+        }
+        Insert: {
+          archived?: boolean | null
+          created_at?: string | null
+          employee_id?: string | null
+          employee_profile_id?: string | null
+          hr_user_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          org_id: string
+        }
+        Update: {
+          archived?: boolean | null
+          created_at?: string | null
+          employee_id?: string | null
+          employee_profile_id?: string | null
+          hr_user_id?: string | null
+          id?: string
+          last_message_at?: string | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_employee_profile_id_fkey"
+            columns: ["employee_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_hr_user_id_fkey"
+            columns: ["hr_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          conversation_id: string | null
+          form_request_id: string | null
+          id: string
+          message_text: string | null
+          message_type: string
+          org_id: string
+          read: boolean | null
+          read_at: string | null
+          sender_id: string
+          sender_type: string
+          sent_at: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          form_request_id?: string | null
+          id?: string
+          message_text?: string | null
+          message_type?: string
+          org_id: string
+          read?: boolean | null
+          read_at?: string | null
+          sender_id: string
+          sender_type: string
+          sent_at?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          form_request_id?: string | null
+          id?: string
+          message_text?: string | null
+          message_type?: string
+          org_id?: string
+          read?: boolean | null
+          read_at?: string | null
+          sender_id?: string
+          sender_type?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_form_request_id_fkey"
+            columns: ["form_request_id"]
+            isOneToOne: false
+            referencedRelation: "form_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_field_values: {
         Row: {
           employee_id: string
@@ -223,6 +356,199 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_requests: {
+        Row: {
+          chat_message_id: string | null
+          completed_at: string | null
+          due_date: string | null
+          employee_id: string | null
+          form_template_id: string | null
+          id: string
+          org_id: string
+          reminder_sent: boolean | null
+          reminder_sent_at: string | null
+          requested_at: string | null
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          chat_message_id?: string | null
+          completed_at?: string | null
+          due_date?: string | null
+          employee_id?: string | null
+          form_template_id?: string | null
+          id?: string
+          org_id: string
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          chat_message_id?: string | null
+          completed_at?: string | null
+          due_date?: string | null
+          employee_id?: string | null
+          form_template_id?: string | null
+          id?: string
+          org_id?: string
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_requests_chat_message_id_fkey"
+            columns: ["chat_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_requests_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_responses: {
+        Row: {
+          employee_id: string | null
+          form_request_id: string | null
+          id: string
+          ip_address: string | null
+          org_id: string
+          responses: Json
+          submitted_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          employee_id?: string | null
+          form_request_id?: string | null
+          id?: string
+          ip_address?: string | null
+          org_id: string
+          responses?: Json
+          submitted_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          employee_id?: string | null
+          form_request_id?: string | null
+          id?: string
+          ip_address?: string | null
+          org_id?: string
+          responses?: Json
+          submitted_at?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_responses_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_responses_form_request_id_fkey"
+            columns: ["form_request_id"]
+            isOneToOne: false
+            referencedRelation: "form_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_responses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_templates: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          fields: Json
+          id: string
+          name: string
+          org_id: string
+          profile_field_mapping: Json | null
+          updated_at: string | null
+          updates_profile: boolean | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          fields?: Json
+          id?: string
+          name: string
+          org_id: string
+          profile_field_mapping?: Json | null
+          updated_at?: string | null
+          updates_profile?: boolean | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          fields?: Json
+          id?: string
+          name?: string
+          org_id?: string
+          profile_field_mapping?: Json | null
+          updated_at?: string | null
+          updates_profile?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
