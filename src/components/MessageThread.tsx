@@ -41,7 +41,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     },
   });
 
-  const { data: messages, isLoading } = useQuery({
+  const { data: messages, isLoading, isFetching } = useQuery({
     queryKey: ['chat-messages', conversationId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -66,6 +66,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       return data;
     },
     refetchInterval: 3000,
+    refetchIntervalInBackground: false,
   });
 
   // Mark messages as read when conversation is opened
@@ -135,7 +136,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !messages) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

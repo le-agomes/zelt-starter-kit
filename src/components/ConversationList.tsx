@@ -45,6 +45,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     },
     enabled: !!user?.id,
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   // Get unread counts for each conversation
@@ -72,6 +73,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     },
     enabled: !!user?.id && !!conversations?.length,
     refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   if (isLoading) {

@@ -19,7 +19,7 @@ export default function Chat() {
       <PageContent>
         <div className="flex h-[calc(100vh-12rem)] gap-4">
           {/* Conversation List - Left Panel */}
-          <div className={`${selectedConversationId ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-col border-r border-border`}>
+          <div className={`${selectedConversationId ? 'hidden md:flex' : 'flex'} w-full md:w-96 flex-col border-r border-border`}>
             <ConversationList 
               selectedId={selectedConversationId}
               onSelect={setSelectedConversationId}
