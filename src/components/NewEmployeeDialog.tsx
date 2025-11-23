@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -48,6 +49,8 @@ const employeeSchema = z.object({
   location: z.string().trim().max(100).optional(),
   start_date: z.date().optional(),
   status: z.enum(['candidate', 'onboarding', 'active', 'offboarded']),
+  send_invitation: z.boolean().default(true),
+  role: z.enum(['admin', 'hr', 'manager', 'it', 'employee']).default('employee'),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
@@ -67,6 +70,8 @@ export function NewEmployeeDialog() {
       department: '',
       location: '',
       status: 'candidate',
+      send_invitation: true,
+      role: 'employee',
     },
   });
 
@@ -108,10 +113,39 @@ export function NewEmployeeDialog() {
 
       if (insertError) throw insertError;
 
-      toast({
-        title: 'Success',
-        description: 'Employee added successfully',
-      });
+      // If send_invitation is checked, call invite-user edge function
+      if (values.send_invitation && newEmployee) {
+        console.log('Sending invitation to:', values.email);
+        
+        const { error: inviteError } = await supabase.functions.invoke('invite-user', {
+          body: {
+            email: values.email,
+            full_name: values.full_name,
+            role: values.role,
+            create_employee: false, // Employee already created
+            employee_id: newEmployee.id, // Pass the employee ID to link
+          },
+        });
+
+        if (inviteError) {
+          console.error('Error sending invitation:', inviteError);
+          toast({
+            title: 'Employee Created',
+            description: 'Employee added but invitation email failed to send. You can resend it later.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Success',
+            description: 'Employee added and invitation email sent successfully',
+          });
+        }
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Employee added successfully',
+        });
+      }
 
       setOpen(false);
       form.reset();
@@ -321,6 +355,58 @@ export function NewEmployeeDialog() {
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <FormField
+                control={form.control}
+                name="send_invitation"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Send invitation email
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Invite this employee to access the platform and complete their profile
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('send_invitation') && (
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Platform Role</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="employee">Employee</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="it">IT</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
