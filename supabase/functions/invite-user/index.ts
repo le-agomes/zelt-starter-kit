@@ -11,6 +11,7 @@ interface InviteUserRequest {
   full_name: string;
   role: 'admin' | 'hr' | 'manager' | 'it' | 'employee';
   create_employee?: boolean;
+  employee_id?: string; // ID of existing employee to link
   employee_data?: {
     job_title?: string | null;
     department?: string | null;
@@ -77,13 +78,13 @@ serve(async (req) => {
     console.log('Caller org_id:', callerProfile.org_id);
 
     // Parse request body
-    const { email, full_name, role, create_employee, employee_data }: InviteUserRequest = await req.json();
+    const { email, full_name, role, create_employee, employee_id, employee_data }: InviteUserRequest = await req.json();
 
     if (!email || !full_name) {
       throw new Error('Email and full name are required');
     }
 
-    console.log('Inviting user:', email, 'with role:', role, 'create_employee:', create_employee);
+    console.log('Inviting user:', email, 'with role:', role, 'create_employee:', create_employee, 'employee_id:', employee_id);
 
     // Create admin client
     const supabaseAdmin = createClient(
@@ -155,8 +156,25 @@ serve(async (req) => {
       // Don't fail if role insert fails, as profile already has role
     }
 
+    // Link to existing employee if employee_id provided
+    if (employee_id) {
+      console.log('Linking profile to existing employee:', employee_id);
+      
+      const { error: linkError } = await supabaseAdmin
+        .from('employees')
+        .update({ profile_id: newUser.user.id })
+        .eq('id', employee_id)
+        .eq('org_id', callerProfile.org_id);
+
+      if (linkError) {
+        console.error('Error linking profile to employee:', linkError);
+        // Don't fail the whole operation if linking fails
+      } else {
+        console.log('Profile linked to employee successfully');
+      }
+    }
     // Create employee record if requested
-    if (create_employee && employee_data) {
+    else if (create_employee && employee_data) {
       console.log('Creating employee record for user:', newUser.user.id);
       
       const { error: employeeError } = await supabaseAdmin
