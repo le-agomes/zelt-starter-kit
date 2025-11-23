@@ -28,7 +28,7 @@ export default function MyRequests() {
         .from('employees')
         .select('*')
         .eq('profile_id', session?.user?.id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       return data;
