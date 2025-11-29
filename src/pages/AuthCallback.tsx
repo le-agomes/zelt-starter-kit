@@ -12,51 +12,49 @@ export default function AuthCallback() {
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    const checkSession = async () => {
-      if (hasCheckedSession.current) return;
-      hasCheckedSession.current = true;
+    if (hasCheckedSession.current) return;
+    hasCheckedSession.current = true;
 
-      console.log('Auth callback: Starting session check');
+    console.log('Auth callback: Waiting for auth state change');
 
-      // Set up timeout
-      timeoutRef.current = setTimeout(() => {
-        console.log('Auth callback: Timeout - no session found');
-        setError(true);
-      }, 10000);
+    // Set up timeout
+    timeoutRef.current = setTimeout(() => {
+      console.log('Auth callback: Timeout - no session found');
+      setError(true);
+    }, 15000);
 
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Listen for auth state changes - this properly handles token exchange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth callback: Event -', event, 'Session:', !!session);
         
-        if (sessionError) {
-          console.error('Auth callback: Error -', sessionError);
-          clearTimeout(timeoutRef.current);
-          setError(true);
-          return;
-        }
-
-        if (session) {
-          console.log('Auth callback: Session found, redirecting to dashboard');
+        if (event === 'SIGNED_IN' && session) {
+          console.log('Auth callback: User signed in, invoking post-signin');
           clearTimeout(timeoutRef.current);
           
           // Invoke post-signin edge function
           try {
-            await supabase.functions.invoke('post-signin');
+            const { error: postSigninError } = await supabase.functions.invoke('post-signin');
+            if (postSigninError) {
+              console.error('Post-signin error:', postSigninError);
+            } else {
+              console.log('Post-signin completed successfully');
+            }
           } catch (error) {
-            console.error('Post-signin error:', error);
+            console.error('Post-signin exception:', error);
           }
           
           navigate('/app/dashboard', { replace: true });
+        } else if (event === 'SIGNED_OUT') {
+          console.log('Auth callback: User signed out');
+          clearTimeout(timeoutRef.current);
+          setError(true);
         }
-      } catch (error) {
-        console.error('Auth callback: Error -', error);
-        clearTimeout(timeoutRef.current);
-        setError(true);
       }
-    };
-
-    checkSession();
+    );
 
     return () => {
+      subscription.unsubscribe();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }

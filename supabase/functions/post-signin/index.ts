@@ -68,11 +68,34 @@ Deno.serve(async (req) => {
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
-        const { data: existingEmployee, error: employeeCheckError } = await supabaseAdmin
+        // Check for employee by email (properly escaped for special chars)
+        const { data: employeeByEmail, error: employeeCheckError } = await supabaseAdmin
           .from('employees')
           .select('id, org_id, email, work_email, personal_email')
-          .or(`email.eq.${user.email},work_email.eq.${user.email},personal_email.eq.${user.email}`)
+          .eq('email', user.email)
           .maybeSingle();
+
+        let existingEmployee = employeeByEmail;
+
+        // If not found by primary email, try work_email
+        if (!existingEmployee && !employeeCheckError) {
+          const { data: employeeByWorkEmail } = await supabaseAdmin
+            .from('employees')
+            .select('id, org_id, email, work_email, personal_email')
+            .eq('work_email', user.email)
+            .maybeSingle();
+          existingEmployee = employeeByWorkEmail;
+        }
+
+        // If still not found, try personal_email
+        if (!existingEmployee && !employeeCheckError) {
+          const { data: employeeByPersonalEmail } = await supabaseAdmin
+            .from('employees')
+            .select('id, org_id, email, work_email, personal_email')
+            .eq('personal_email', user.email)
+            .maybeSingle();
+          existingEmployee = employeeByPersonalEmail;
+        }
 
         if (employeeCheckError) {
           console.error('Error checking employee:', employeeCheckError);
@@ -157,12 +180,34 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check if an employee record exists with this email
-    const { data: existingEmployee, error: employeeCheckError } = await supabaseAdmin
+    // Check if an employee record exists with this email (properly escaped)
+    const { data: employeeByEmail, error: employeeCheckError } = await supabaseAdmin
       .from('employees')
       .select('id, org_id, email, work_email, personal_email')
-      .or(`email.eq.${user.email},work_email.eq.${user.email},personal_email.eq.${user.email}`)
+      .eq('email', user.email)
       .maybeSingle();
+
+    let existingEmployee = employeeByEmail;
+
+    // If not found by primary email, try work_email
+    if (!existingEmployee && !employeeCheckError) {
+      const { data: employeeByWorkEmail } = await supabaseAdmin
+        .from('employees')
+        .select('id, org_id, email, work_email, personal_email')
+        .eq('work_email', user.email)
+        .maybeSingle();
+      existingEmployee = employeeByWorkEmail;
+    }
+
+    // If still not found, try personal_email
+    if (!existingEmployee && !employeeCheckError) {
+      const { data: employeeByPersonalEmail } = await supabaseAdmin
+        .from('employees')
+        .select('id, org_id, email, work_email, personal_email')
+        .eq('personal_email', user.email)
+        .maybeSingle();
+      existingEmployee = employeeByPersonalEmail;
+    }
 
     if (employeeCheckError) {
       console.error('Error checking employee:', employeeCheckError);
