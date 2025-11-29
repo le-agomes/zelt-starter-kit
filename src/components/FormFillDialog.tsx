@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { Upload, X } from 'lucide-react';
 
 interface FormFillDialogProps {
   request: any;
@@ -19,8 +20,17 @@ interface FormFillDialogProps {
 export function FormFillDialog({ request, open, onClose, onSuccess }: FormFillDialogProps) {
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
 
   const fields = request.form_template.fields as any[];
+
+  // Reset form state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setResponses({});
+      setUploadingFiles({});
+    }
+  }, [open, request.id]);
 
   const handleSubmit = async () => {
     // Validate required fields
@@ -62,6 +72,39 @@ export function FormFillDialog({ request, open, onClose, onSuccess }: FormFillDi
       toast.error('Failed to submit form: ' + error.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = async (field: any, file: File) => {
+    setUploadingFiles({ ...uploadingFiles, [field.key]: true });
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${request.id}/${field.key}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('form-attachments')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('form-attachments')
+        .getPublicUrl(fileName);
+
+      setResponses({ 
+        ...responses, 
+        [field.key]: { 
+          fileName: file.name, 
+          filePath: fileName,
+          fileUrl: publicUrl 
+        } 
+      });
+      toast.success('File uploaded successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload file: ' + error.message);
+    } finally {
+      setUploadingFiles({ ...uploadingFiles, [field.key]: false });
     }
   };
 
@@ -118,12 +161,72 @@ export function FormFillDialog({ request, open, onClose, onSuccess }: FormFillDi
           </Select>
         );
       
+      case 'multiselect':
+        return (
+          <div className="space-y-2">
+            {field.options?.map((option: string) => (
+              <div key={option} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`${field.key}-${option}`}
+                  checked={(value || []).includes(option)}
+                  onCheckedChange={(checked) => {
+                    const currentValues = value || [];
+                    const newValues = checked
+                      ? [...currentValues, option]
+                      : currentValues.filter((v: string) => v !== option);
+                    setResponses({ ...responses, [field.key]: newValues });
+                  }}
+                />
+                <Label htmlFor={`${field.key}-${option}`} className="text-sm font-normal cursor-pointer">
+                  {option}
+                </Label>
+              </div>
+            ))}
+          </div>
+        );
+      
       case 'checkbox':
         return (
           <Checkbox
             checked={value || false}
             onCheckedChange={(checked) => setResponses({ ...responses, [field.key]: checked })}
           />
+        );
+      
+      case 'file':
+        return (
+          <div className="space-y-2">
+            {value ? (
+              <div className="flex items-center gap-2 p-2 border rounded-md">
+                <span className="text-sm flex-1">{value.fileName}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setResponses({ ...responses, [field.key]: null })}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(field, file);
+                  }}
+                  disabled={uploadingFiles[field.key]}
+                  className="cursor-pointer"
+                />
+                {uploadingFiles[field.key] && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                    <span className="text-sm">Uploading...</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         );
       
       default:
