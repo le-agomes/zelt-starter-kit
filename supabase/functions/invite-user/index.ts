@@ -80,6 +80,11 @@ serve(async (req) => {
     // Parse request body
     const { email, full_name, role, create_employee, employee_id, employee_data }: InviteUserRequest = await req.json();
 
+    // SECURITY: Prevent HR from creating Admins
+    if (role === 'admin' && callerProfile.role !== 'admin') {
+      throw new Error('Only admins can invite other admins');
+    }
+
     if (!email || !full_name) {
       throw new Error('Email and full name are required');
     }
@@ -98,15 +103,16 @@ serve(async (req) => {
       }
     );
 
-    // Invite user via email
+    // Invite user via email with metadata for database trigger
     const redirectUrl = `${req.headers.get('origin') || Deno.env.get('SUPABASE_URL')}/auth/callback`;
     
     const { data: newUser, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       redirectTo: redirectUrl,
       data: {
         full_name: full_name,
-        invited_by: user.id,
         org_id: callerProfile.org_id,
+        role: role,
+        invited_by: user.id,
       },
     });
 
@@ -119,44 +125,7 @@ serve(async (req) => {
       throw new Error('Failed to invite user');
     }
 
-    console.log('User invited:', newUser.user.id);
-
-    // Upsert into profiles
-    const { error: profileUpsertError } = await supabaseAdmin
-      .from('profiles')
-      .upsert({
-        id: newUser.user.id,
-        org_id: callerProfile.org_id,
-        full_name: full_name,
-        email,
-        role,
-        active: true,
-      }, {
-        onConflict: 'id',
-      });
-
-    if (profileUpsertError) {
-      console.error('Error upserting profile:', profileUpsertError);
-      throw new Error('Failed to create user profile');
-    }
-
-    console.log('Profile created for user:', newUser.user.id);
-
-    // Upsert into user_roles (sync with profiles.role)
-    const { error: roleUpsertError } = await supabaseAdmin
-      .from('user_roles')
-      .upsert({
-        user_id: newUser.user.id,
-        role,
-        profile_id: newUser.user.id,
-      }, {
-        onConflict: 'user_id,role',
-      });
-
-    if (roleUpsertError) {
-      console.error('Error upserting user role:', roleUpsertError);
-      // Don't fail if role upsert fails, as profile already has role
-    }
+    console.log('User invited:', newUser.user.id, '- Database trigger will handle profile and role creation');
 
     // Link to existing employee if employee_id provided
     if (employee_id) {
@@ -221,12 +190,16 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in invite-user function:', error);
+    
+    // Return 403 for authorization errors
+    const isAuthError = error.message?.includes('Only admins') || error.message?.includes('Only admins and HR');
+    
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Internal server error',
       }),
       {
-        status: error.message === 'Unauthorized' ? 401 : 500,
+        status: isAuthError ? 403 : (error.message === 'Unauthorized' ? 401 : 500),
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,
