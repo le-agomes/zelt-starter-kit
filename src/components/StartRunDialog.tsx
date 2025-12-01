@@ -83,12 +83,29 @@ export function StartRunDialog({ open, onOpenChange, workflowId, employeeId }: S
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('create-run', {
-        body: {
-          workflow_id: selectedWorkflowId,
-          employee_id: selectedEmployeeId,
-          start_date: startDate
-        }
+      // Get session and profile
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', sessionData.session.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('Profile not found');
+      }
+
+      // Call the database function
+      const { data: runId, error } = await supabase.rpc('start_workflow_run', {
+        p_workflow_id: selectedWorkflowId,
+        p_employee_id: selectedEmployeeId,
+        p_starter_id: sessionData.session.user.id,
+        p_org_id: profile.org_id,
+        p_start_date: startDate ? new Date(startDate).toISOString() : undefined
       });
 
       if (error) throw error;
@@ -99,7 +116,7 @@ export function StartRunDialog({ open, onOpenChange, workflowId, employeeId }: S
       });
 
       onOpenChange(false);
-      navigate(`/app/runs/${data.run_id}`);
+      navigate(`/app/runs/${runId}`);
     } catch (error: any) {
       toast({
         title: 'Error',
