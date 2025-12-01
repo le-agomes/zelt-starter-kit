@@ -981,6 +981,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      start_workflow_run: {
+        Args: {
+          p_employee_id: string
+          p_org_id: string
+          p_start_date?: string
+          p_starter_id: string
+          p_workflow_id: string
+        }
+        Returns: string
+      }
       user_can_access_org: { Args: { _org_id: string }; Returns: boolean }
     }
     Enums: {
