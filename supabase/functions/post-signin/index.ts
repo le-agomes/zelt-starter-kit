@@ -149,10 +149,56 @@ Deno.serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
           );
+        } else {
+          // No employee match - create new org for self-signup
+          console.log('No employee match found, creating new organization for self-signup');
+          
+          const { data: newOrg, error: orgError } = await supabaseAdmin
+            .from('organizations')
+            .insert({
+              name: `${(user.email || 'user').split('@')[0]}'s Organization`,
+            })
+            .select()
+            .single();
+          
+          if (orgError || !newOrg) {
+            console.error('Error creating organization:', orgError);
+            throw new Error('Failed to create organization');
+          }
+          
+          console.log('Created new organization:', newOrg.id);
+          
+          // Update profile with org_id and set as admin
+          const { data: updatedProfile, error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update({
+              org_id: newOrg.id,
+              role: 'admin',
+            })
+            .eq('id', existingProfile.id)
+            .select()
+            .single();
+          
+          if (updateError || !updatedProfile) {
+            console.error('Error updating profile:', updateError);
+            throw new Error('Failed to update profile');
+          }
+          
+          console.log('Profile updated with new org, returning org data');
+          return new Response(
+            JSON.stringify({
+              org: newOrg,
+              profile: updatedProfile,
+            }),
+            { 
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
         }
       }
 
-      // Profile has org_id or no employee found, return as is
+      // Profile has org_id, return as is
       console.log('Profile exists with org, returning:', existingProfile.id);
       return new Response(
         JSON.stringify({ 
