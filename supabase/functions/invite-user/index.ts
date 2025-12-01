@@ -142,18 +142,20 @@ serve(async (req) => {
 
     console.log('Profile created for user:', newUser.user.id);
 
-    // Insert into user_roles
-    const { error: roleInsertError } = await supabaseAdmin
+    // Upsert into user_roles (sync with profiles.role)
+    const { error: roleUpsertError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
+      .upsert({
         user_id: newUser.user.id,
         role,
         profile_id: newUser.user.id,
+      }, {
+        onConflict: 'user_id,role',
       });
 
-    if (roleInsertError) {
-      console.error('Error inserting user role:', roleInsertError);
-      // Don't fail if role insert fails, as profile already has role
+    if (roleUpsertError) {
+      console.error('Error upserting user role:', roleUpsertError);
+      // Don't fail if role upsert fails, as profile already has role
     }
 
     // Link to existing employee if employee_id provided

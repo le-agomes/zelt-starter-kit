@@ -123,6 +123,16 @@ Deno.serve(async (req) => {
 
           console.log('Updated profile with org:', updatedProfile.id);
 
+          // Sync user_roles table
+          const { error: roleUpdateError } = await supabaseAdmin
+            .from('user_roles')
+            .update({ role: 'employee' })
+            .eq('user_id', existingProfile.id);
+
+          if (roleUpdateError) {
+            console.error('Error updating user_roles:', roleUpdateError);
+          }
+
           // Link employee to profile
           const { error: linkError } = await supabaseAdmin
             .from('employees')
@@ -182,6 +192,16 @@ Deno.serve(async (req) => {
           if (updateError || !updatedProfile) {
             console.error('Error updating profile:', updateError);
             throw new Error('Failed to update profile');
+          }
+
+          // Sync user_roles table
+          const { error: roleUpdateError } = await supabaseAdmin
+            .from('user_roles')
+            .update({ role: 'admin' })
+            .eq('user_id', existingProfile.id);
+
+          if (roleUpdateError) {
+            console.error('Error updating user_roles:', roleUpdateError);
           }
           
           console.log('Profile updated with new org, returning org data');
@@ -290,6 +310,16 @@ Deno.serve(async (req) => {
 
       if (linkError) {
         console.error('Error linking profile to employee:', linkError);
+      }
+
+      // Sync user_roles table with the employee role
+      const { error: roleUpdateError } = await supabaseAdmin
+        .from('user_roles')
+        .update({ role: 'employee' })
+        .eq('user_id', user.id);
+
+      if (roleUpdateError) {
+        console.error('Error updating user_roles:', roleUpdateError);
       }
 
       // Fetch the organization
