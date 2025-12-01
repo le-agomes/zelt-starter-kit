@@ -87,12 +87,20 @@ export function NewEmployeeDialog() {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('org_id')
+        .select('org_id, role')
         .eq('id', user.id)
         .single();
 
-      if (profileError || !profile?.org_id) {
-        throw new Error('Could not fetch organization');
+      if (profileError) {
+        throw new Error('Failed to load your profile. Please try again.');
+      }
+
+      if (!profile) {
+        throw new Error('Your profile was not found. Please sign out and sign in again.');
+      }
+
+      if (!profile.org_id) {
+        throw new Error('Your account is not linked to an organization. Please sign out and sign in again to create or join one.');
       }
 
       // Insert the new employee

@@ -72,6 +72,31 @@ export function InviteUserDialog() {
 
     setIsSubmitting(true);
     try {
+      // Verify current user's org_id
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        throw new Error('Failed to load your profile. Please try again.');
+      }
+
+      if (!profile) {
+        throw new Error('Your profile was not found. Please sign out and sign in again.');
+      }
+
+      if (!profile.org_id) {
+        throw new Error('Your account is not linked to an organization. Please sign out and sign in again to create or join one.');
+      }
+
       const body: any = {
         email: email.trim(),
         full_name: fullName.trim(),
