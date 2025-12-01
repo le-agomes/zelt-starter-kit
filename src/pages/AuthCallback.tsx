@@ -29,22 +29,44 @@ export default function AuthCallback() {
         console.log('Auth callback: Event -', event, 'Session:', !!session);
         
         if (event === 'SIGNED_IN' && session) {
-          console.log('Auth callback: User signed in, invoking post-signin');
+          console.log('Auth callback: User signed in, waiting for profile creation');
           clearTimeout(timeoutRef.current);
           
-          // Invoke post-signin edge function
-          try {
-            const { error: postSigninError } = await supabase.functions.invoke('post-signin');
-            if (postSigninError) {
-              console.error('Post-signin error:', postSigninError);
-            } else {
-              console.log('Post-signin completed successfully');
+          // Wait for database trigger to create profile
+          // Poll for profile existence with a 2-second timeout
+          const maxAttempts = 4; // 4 attempts * 500ms = 2 seconds
+          let attempts = 0;
+          let profileFound = false;
+          
+          while (attempts < maxAttempts && !profileFound) {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', session.user.id)
+              .maybeSingle();
+            
+            if (profileError) {
+              console.error('Error checking profile:', profileError);
+              break;
             }
-          } catch (error) {
-            console.error('Post-signin exception:', error);
+            
+            if (profile) {
+              console.log('Auth callback: Profile found, redirecting to dashboard');
+              profileFound = true;
+              navigate('/app/dashboard', { replace: true });
+              break;
+            }
+            
+            attempts++;
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
           }
           
-          navigate('/app/dashboard', { replace: true });
+          if (!profileFound) {
+            console.error('Auth callback: Profile not created after 2 seconds');
+            setError(true);
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log('Auth callback: User signed out');
           clearTimeout(timeoutRef.current);
@@ -69,9 +91,9 @@ export default function AuthCallback() {
             <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-destructive" />
             </div>
-            <CardTitle>Sign-in Failed</CardTitle>
+            <CardTitle>Account Setup Failed</CardTitle>
             <CardDescription>
-              We couldn't sign you in. This might happen if the link expired or was already used.
+              Account setup failed. Please contact support.
             </CardDescription>
           </CardHeader>
           <CardContent>
