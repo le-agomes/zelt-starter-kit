@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { canViewField, canEditEmployee, canDeleteEmployee } from '@/utils/permissions';
+import { Database } from '@/integrations/supabase/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -104,8 +106,9 @@ export default function EmployeeDetail() {
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({});
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
-  const [userRole, setUserRole] = useState<string>('employee');
+  const [userRole, setUserRole] = useState<Database['public']['Enums']['user_role']>('employee');
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
+  const [isViewerManager, setIsViewerManager] = useState(false);
 
   const fetchEmployee = async () => {
     if (!id) return;
@@ -171,6 +174,8 @@ export default function EmployeeDetail() {
         
         if (profileData?.role) {
           setUserRole(profileData.role);
+          // Check if viewer is the manager of this employee
+          setIsViewerManager(empData.manager_profile_id === user.id);
         }
 
         // Fetch available managers (all users in the same org)
@@ -509,41 +514,47 @@ export default function EmployeeDetail() {
               </>
             ) : (
               <>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setStartRunDialogOpen(true)}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Workflow
-                </Button>
                 {(userRole === 'admin' || userRole === 'hr') && (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setStartRunDialogOpen(true)}
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Start Workflow
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setSendFormDialogOpen(true)}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Send Form
+                    </Button>
+                  </>
+                )}
+                {canEditEmployee(userRole) && (
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
-                    onClick={() => setSendFormDialogOpen(true)}
+                    onClick={() => setIsEditing(true)}
                   >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Send Form
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
+                {canDeleteEmployee(userRole) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -733,7 +744,16 @@ export default function EmployeeDetail() {
             const systemFieldKeys = getSystemFieldsBySection(section);
             const customFieldsList = getCustomFieldsBySection(section);
             
-            if (systemFieldKeys.length === 0 && customFieldsList.length === 0) return null;
+            // Filter fields based on permissions
+            const visibleSystemFields = systemFieldKeys.filter(fieldKey => 
+              canViewField(fieldKey, userRole, isViewerManager)
+            );
+            const visibleCustomFields = customFieldsList.filter(field =>
+              !field.is_sensitive || canViewField('sensitive_custom_field', userRole, isViewerManager)
+            );
+            
+            // Hide section if no visible fields
+            if (visibleSystemFields.length === 0 && visibleCustomFields.length === 0) return null;
 
             return (
               <Card key={section}>
@@ -741,29 +761,43 @@ export default function EmployeeDetail() {
                   <CardTitle>{section}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4">
+                   <div className="grid gap-4">
                     {/* System Fields */}
-                    {systemFieldKeys.map(fieldKey => (
-                      <div key={fieldKey} className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                          {formatFieldName(fieldKey)}
-                          {systemFields[fieldKey]?.required && <span className="text-destructive ml-1">*</span>}
-                        </Label>
-                        {renderFieldInput(fieldKey, formatFieldName(fieldKey))}
-                      </div>
-                    ))}
+                    {systemFieldKeys.map(fieldKey => {
+                      // Check if viewer has permission to see this field
+                      if (!canViewField(fieldKey, userRole, isViewerManager)) {
+                        return null;
+                      }
+                      
+                      return (
+                        <div key={fieldKey} className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            {formatFieldName(fieldKey)}
+                            {systemFields[fieldKey]?.required && <span className="text-destructive ml-1">*</span>}
+                          </Label>
+                          {renderFieldInput(fieldKey, formatFieldName(fieldKey))}
+                        </div>
+                      );
+                    })}
 
                     {/* Custom Fields */}
-                    {customFieldsList.map(field => (
-                      <div key={field.id} className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                          {field.label}
-                          {field.required && <span className="text-destructive ml-1">*</span>}
-                          {field.is_sensitive && <span className="ml-1 text-amber-600">(Sensitive)</span>}
-                        </Label>
-                        {renderFieldInput(field.id, field.label, field.type, field.options, true, field.is_sensitive)}
-                      </div>
-                    ))}
+                    {customFieldsList.map(field => {
+                      // Apply same field-level security to custom fields if they're marked sensitive
+                      if (field.is_sensitive && !canViewField('sensitive_custom_field', userRole, isViewerManager)) {
+                        return null;
+                      }
+                      
+                      return (
+                        <div key={field.id} className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            {field.label}
+                            {field.required && <span className="text-destructive ml-1">*</span>}
+                            {field.is_sensitive && <span className="ml-1 text-amber-600">(Sensitive)</span>}
+                          </Label>
+                          {renderFieldInput(field.id, field.label, field.type, field.options, true, field.is_sensitive)}
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

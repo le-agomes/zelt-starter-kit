@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { canCreateEmployee } from '@/utils/permissions';
+import { Database } from '@/integrations/supabase/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -55,10 +58,28 @@ const getStatusLabel = (status: string) => {
 };
 
 export default function Employees() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Fetch current user's role
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   // Fetch employees
   const { data: employees, isLoading } = useQuery({
@@ -124,12 +145,14 @@ export default function Employees() {
     setCurrentPage(1);
   };
 
+  const userRole = userProfile?.role as Database['public']['Enums']['user_role'] | undefined;
+
   return (
     <PageContent className="max-w-2xl space-y-4">
       <PageHeader 
         title="Employees" 
-        description="Manage your team members"
-        actions={<NewEmployeeDialog />}
+        description="Browse team members"
+        actions={userRole && canCreateEmployee(userRole) ? <NewEmployeeDialog /> : undefined}
       />
 
       {/* Search and Filters */}
