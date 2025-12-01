@@ -16,34 +16,38 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
 
-  // Fetch employee statistics
+  // Fetch employee statistics using efficient count queries
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['employee-stats'],
     queryFn: async () => {
-      const { data: employees, error } = await supabase
-        .from('employees')
-        .select('status, created_at');
-
-      if (error) throw error;
-
-      // Calculate active employees
-      const activeCount = employees?.filter(e => e.status === 'active').length || 0;
-
-      // Calculate onboarding employees
-      const onboardingCount = employees?.filter(e => e.status === 'onboarding').length || 0;
-
-      // Calculate new this month
+      // Calculate start of current month for "new this month"
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const newThisMonthCount = employees?.filter(e => {
-        const createdAt = new Date(e.created_at);
-        return createdAt >= startOfMonth;
-      }).length || 0;
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      // Run three parallel count queries
+      const [activeResult, onboardingResult, newThisMonthResult] = await Promise.all([
+        supabase
+          .from('employees')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active'),
+        supabase
+          .from('employees')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'onboarding'),
+        supabase
+          .from('employees')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', startOfMonth),
+      ]);
+
+      if (activeResult.error) throw activeResult.error;
+      if (onboardingResult.error) throw onboardingResult.error;
+      if (newThisMonthResult.error) throw newThisMonthResult.error;
 
       return {
-        active: activeCount,
-        onboarding: onboardingCount,
-        newThisMonth: newThisMonthCount,
+        active: activeResult.count || 0,
+        onboarding: onboardingResult.count || 0,
+        newThisMonth: newThisMonthResult.count || 0,
       };
     },
   });
