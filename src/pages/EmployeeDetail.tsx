@@ -89,6 +89,12 @@ const formatFieldName = (fieldName: string): string => {
     .join(' ');
 };
 
+// Sections that employees can self-edit (not Employment)
+const SELF_EDITABLE_SECTIONS = ['Identity', 'Contact', 'Emergency'];
+
+// Employment fields that are always read-only for self-editing
+const EMPLOYMENT_FIELDS = ['job_title', 'department', 'manager_profile_id', 'status', 'start_date', 'end_date', 'employment_type', 'location'];
+
 export default function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -101,6 +107,7 @@ export default function EmployeeDetail() {
   const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
   const [sendFormDialogOpen, setSendFormDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [systemFields, setSystemFields] = useState<Record<string, FieldConfig>>({});
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
@@ -109,6 +116,10 @@ export default function EmployeeDetail() {
   const [userRole, setUserRole] = useState<Database['public']['Enums']['user_role']>('employee');
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [isViewerManager, setIsViewerManager] = useState(false);
+
+  // Check if user is viewing their own profile
+  const isOwnProfile = employee?.profile_id === user?.id;
+  const canSelfEdit = isOwnProfile && !canEditEmployee(userRole);
 
   const fetchEmployee = async () => {
     if (!id) return;
@@ -203,8 +214,55 @@ export default function EmployeeDetail() {
     }
   };
 
-  const handleSaveChanges = async () => {
+  // Validate required fields before saving
+  const validateRequiredFields = (section?: string): string[] => {
+    const errors: string[] = [];
+    
+    // Get fields to validate based on section
+    const fieldsToValidate = section 
+      ? Object.entries(systemFields).filter(([_, config]) => config.section === section)
+      : Object.entries(systemFields);
+    
+    // Validate system fields
+    for (const [key, config] of fieldsToValidate) {
+      if (config.required && config.visible) {
+        const value = editedValues[key] !== undefined ? editedValues[key] : employee?.[key];
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          errors.push(formatFieldName(key));
+        }
+      }
+    }
+    
+    // Validate custom fields
+    const customFieldsToValidate = section
+      ? customFields.filter(f => f.section === section)
+      : customFields;
+      
+    for (const field of customFieldsToValidate) {
+      if (field.required && field.active) {
+        const value = editedValues[field.id] !== undefined ? editedValues[field.id] : fieldValues[field.id];
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          errors.push(field.label);
+        }
+      }
+    }
+    
+    return errors;
+  };
+
+  const handleSaveChanges = async (section?: string) => {
     if (!employee) return;
+
+    // Validate required fields
+    const validationErrors = validateRequiredFields(section);
+    if (validationErrors.length > 0) {
+      toast({
+        title: 'Required Fields Missing',
+        description: `Please fill in: ${validationErrors.join(', ')}`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -212,7 +270,12 @@ export default function EmployeeDetail() {
       const systemFieldUpdates: Record<string, any> = {};
       const customFieldUpdates: Array<{ field_id: string; value: any }> = [];
 
-      Object.keys(editedValues).forEach((key) => {
+      // For self-editing, filter out employment fields
+      const allowedKeys = canSelfEdit 
+        ? Object.keys(editedValues).filter(key => !EMPLOYMENT_FIELDS.includes(key))
+        : Object.keys(editedValues);
+
+      allowedKeys.forEach((key) => {
         if (customFields.find(f => f.id === key)) {
           customFieldUpdates.push({ field_id: key, value: editedValues[key] });
         } else {
@@ -255,12 +318,13 @@ export default function EmployeeDetail() {
       });
 
       setIsEditing(false);
+      setEditingSection(null);
       setEditedValues({});
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving changes:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save changes',
+        description: error.message || 'Failed to save changes',
         variant: 'destructive',
       });
     } finally {
@@ -270,7 +334,30 @@ export default function EmployeeDetail() {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    setEditingSection(null);
     setEditedValues({});
+  };
+
+  const handleStartSectionEdit = (section: string) => {
+    setEditingSection(section);
+    setIsEditing(true);
+  };
+
+  // Check if a field is editable in current context
+  const isFieldEditable = (fieldKey: string, section: string) => {
+    // Full admin/HR editing mode
+    if (isEditing && !editingSection && canEditEmployee(userRole)) {
+      return true;
+    }
+    // Section-specific editing (self-service or admin)
+    if (isEditing && editingSection === section) {
+      // Employment fields are never self-editable
+      if (canSelfEdit && EMPLOYMENT_FIELDS.includes(fieldKey)) {
+        return false;
+      }
+      return true;
+    }
+    return false;
   };
 
   const handleDelete = async () => {
@@ -499,7 +586,7 @@ export default function EmployeeDetail() {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={handleSaveChanges}
+                  onClick={() => handleSaveChanges(editingSection || undefined)}
                   disabled={isSaving}
                 >
                   {isSaving ? (
@@ -580,7 +667,7 @@ export default function EmployeeDetail() {
           </CardContent>
         </Card>
 
-        {/* Core Fields */}
+        {/* Core Fields - Employment info (read-only for self-editing) */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Core Information</CardTitle>
@@ -590,7 +677,7 @@ export default function EmployeeDetail() {
               {/* Job Title */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Job Title</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Input
                     value={getFieldValue('job_title')}
                     onChange={(e) => setFieldValue('job_title', e.target.value)}
@@ -604,7 +691,7 @@ export default function EmployeeDetail() {
               {/* Department */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Department</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Input
                     value={getFieldValue('department')}
                     onChange={(e) => setFieldValue('department', e.target.value)}
@@ -618,7 +705,7 @@ export default function EmployeeDetail() {
               {/* Location */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Location</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Input
                     value={getFieldValue('location')}
                     onChange={(e) => setFieldValue('location', e.target.value)}
@@ -632,7 +719,7 @@ export default function EmployeeDetail() {
               {/* Start Date */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Start Date</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Input
                     type="date"
                     value={getFieldValue('start_date')}
@@ -646,7 +733,7 @@ export default function EmployeeDetail() {
               {/* Status */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Status</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Select 
                     value={getFieldValue('status')} 
                     onValueChange={(v) => setFieldValue('status', v)}
@@ -668,7 +755,7 @@ export default function EmployeeDetail() {
               {/* Manager */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Manager</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Select 
                     value={getFieldValue('manager_profile_id') || ''} 
                     onValueChange={(v) => setFieldValue('manager_profile_id', v || null)}
@@ -718,7 +805,7 @@ export default function EmployeeDetail() {
               {/* Work Email */}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Work Email</Label>
-                {isEditing ? (
+                {isEditing && !editingSection && canEditEmployee(userRole) ? (
                   <Input
                     type="email"
                     value={getFieldValue('work_email')}
@@ -755,10 +842,45 @@ export default function EmployeeDetail() {
             // Hide section if no visible fields
             if (visibleSystemFields.length === 0 && visibleCustomFields.length === 0) return null;
 
+            const isSectionEditing = editingSection === section;
+            const canEditThisSection = canEditEmployee(userRole) || (canSelfEdit && SELF_EDITABLE_SECTIONS.includes(section));
+
             return (
               <Card key={section}>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>{section}</CardTitle>
+                  {/* Section Edit Button for self-service or admin */}
+                  {!isEditing && canEditThisSection && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleStartSectionEdit(section)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                  {isSectionEditing && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        disabled={isSaving}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleSaveChanges(section)}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                    <div className="grid gap-4">
@@ -769,13 +891,17 @@ export default function EmployeeDetail() {
                         return null;
                       }
                       
+                      const editable = isFieldEditable(fieldKey, section);
+                      
                       return (
                         <div key={fieldKey} className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
                             {formatFieldName(fieldKey)}
                             {systemFields[fieldKey]?.required && <span className="text-destructive ml-1">*</span>}
                           </Label>
-                          {renderFieldInput(fieldKey, formatFieldName(fieldKey))}
+                          {editable ? renderFieldInput(fieldKey, formatFieldName(fieldKey)) : (
+                            <p className="text-sm">{employee?.[fieldKey] || '—'}</p>
+                          )}
                         </div>
                       );
                     })}
@@ -787,6 +913,8 @@ export default function EmployeeDetail() {
                         return null;
                       }
                       
+                      const editable = isFieldEditable(field.id, section);
+                      
                       return (
                         <div key={field.id} className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
@@ -794,7 +922,16 @@ export default function EmployeeDetail() {
                             {field.required && <span className="text-destructive ml-1">*</span>}
                             {field.is_sensitive && <span className="ml-1 text-amber-600">(Sensitive)</span>}
                           </Label>
-                          {renderFieldInput(field.id, field.label, field.type, field.options, true, field.is_sensitive)}
+                          {editable ? renderFieldInput(field.id, field.label, field.type, field.options, true, field.is_sensitive) : (
+                            field.is_sensitive && !canSeeSensitiveField() ? (
+                              <div className="flex items-center gap-2">
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">Hidden (sensitive)</span>
+                              </div>
+                            ) : (
+                              <p className="text-sm">{fieldValues[field.id] || '—'}</p>
+                            )
+                          )}
                         </div>
                       );
                     })}
