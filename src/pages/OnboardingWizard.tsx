@@ -228,12 +228,33 @@ export default function OnboardingWizard() {
       });
 
       // Update employee record
-      const { error: updateError } = await supabase
+      const { data: updatedEmployee, error: updateError } = await supabase
         .from('employees')
         .update(updateData)
-        .eq('id', employee.id);
+        .eq('id', employee.id)
+        .select('status')
+        .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Employee update failed:', updateError);
+        toast({
+          title: 'Error',
+          description: updateError.message || 'Failed to update your profile. Please try again.',
+          variant: 'destructive',
+        });
+        return; // Exit early, don't navigate
+      }
+
+      // Verify the status was actually updated
+      if (updatedEmployee?.status !== 'active') {
+        console.error('Status not updated correctly:', updatedEmployee);
+        toast({
+          title: 'Error',
+          description: 'Profile update did not complete successfully. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       // Handle custom fields (store in employee_field_values)
       for (const field of customFields) {
@@ -246,7 +267,10 @@ export default function OnboardingWizard() {
               value: data[field.key],
             });
 
-          if (valueError) throw valueError;
+          if (valueError) {
+            console.error('Custom field update failed:', valueError);
+            // Continue anyway - profile is active, custom fields are secondary
+          }
         }
       }
 
@@ -255,8 +279,12 @@ export default function OnboardingWizard() {
         description: 'Your profile has been completed!',
       });
 
+      // Wait briefly for state to propagate before navigating
+      // This ensures OnboardingGuard sees the updated status
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Redirect to dashboard
-      navigate('/app/dashboard');
+      navigate('/app/dashboard', { replace: true });
 
     } catch (error: any) {
       console.error('Error completing onboarding:', error);
