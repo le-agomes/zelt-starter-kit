@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { Users, UserPlus, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ProfileCompleteness } from '@/components/dashboard/ProfileCompleteness';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -92,6 +93,9 @@ export default function Dashboard() {
         title="Dashboard" 
         description={`Welcome back, ${user?.email}`}
       />
+
+      {/* Profile Completeness Widget */}
+      <ProfileCompleteness />
 
       {/* Employee Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
