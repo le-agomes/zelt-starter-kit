@@ -58,6 +58,7 @@ type EmployeeFormValues = z.infer<typeof employeeSchema>;
 export function NewEmployeeDialog() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [callerRole, setCallerRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -73,6 +74,24 @@ export function NewEmployeeDialog() {
       send_invitation: true,
       role: 'employee',
     },
+  });
+
+  // Fetch the caller's role to determine if they can assign admin
+  useState(() => {
+    const fetchCallerRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setCallerRole(profile.role);
+        }
+      }
+    };
+    fetchCallerRole();
   });
 
   const onSubmit = async (values: EmployeeFormValues) => {
@@ -407,7 +426,9 @@ export function NewEmployeeDialog() {
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="hr">HR</SelectItem>
                           <SelectItem value="it">IT</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          {callerRole === 'admin' && (
+                            <SelectItem value="admin">Admin</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
