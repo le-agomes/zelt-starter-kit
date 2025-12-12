@@ -8,67 +8,63 @@ import { AlertCircle } from 'lucide-react';
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState(false);
-  const hasCheckedSession = useRef(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (hasCheckedSession.current) return;
-    hasCheckedSession.current = true;
+    const handleRedirect = async (userId: string) => {
+      if (isRedirecting) return;
+      setIsRedirecting(true);
+      
+      clearTimeout(timeoutRef.current);
+      
+      // Poll for profile existence
+      const maxAttempts = 6;
+      let attempts = 0;
+      
+      while (attempts < maxAttempts) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (profile) {
+          navigate('/app/dashboard', { replace: true });
+          return;
+        }
+        
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // If profile not found after polling, try dashboard anyway
+      navigate('/app/dashboard', { replace: true });
+    };
 
-    console.log('Auth callback: Waiting for auth state change');
+    // Check for existing session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        handleRedirect(session.user.id);
+      }
+    });
 
     // Set up timeout
     timeoutRef.current = setTimeout(() => {
-      console.log('Auth callback: Timeout - no session found');
-      setError(true);
+      if (!isRedirecting) {
+        setError(true);
+      }
     }, 15000);
 
-    // Listen for auth state changes - this properly handles token exchange
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth callback: Event -', event, 'Session:', !!session);
-        
-        if (event === 'SIGNED_IN' && session) {
-          console.log('Auth callback: User signed in, waiting for profile creation');
-          clearTimeout(timeoutRef.current);
-          
-          // Wait for database trigger to create profile
-          // Poll for profile existence with a 2-second timeout
-          const maxAttempts = 4; // 4 attempts * 500ms = 2 seconds
-          let attempts = 0;
-          let profileFound = false;
-          
-          while (attempts < maxAttempts && !profileFound) {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('id', session.user.id)
-              .maybeSingle();
-            
-            if (profileError) {
-              console.error('Error checking profile:', profileError);
-              break;
-            }
-            
-            if (profile) {
-              console.log('Auth callback: Profile found, redirecting to dashboard');
-              profileFound = true;
-              navigate('/app/dashboard', { replace: true });
-              break;
-            }
-            
-            attempts++;
-            if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          }
-          
-          if (!profileFound) {
-            console.error('Auth callback: Profile not created after 2 seconds');
-            setError(true);
-          }
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Use setTimeout to avoid Supabase deadlock
+          setTimeout(() => {
+            handleRedirect(session.user.id);
+          }, 0);
         } else if (event === 'SIGNED_OUT') {
-          console.log('Auth callback: User signed out');
           clearTimeout(timeoutRef.current);
           setError(true);
         }
@@ -77,11 +73,9 @@ export default function AuthCallback() {
 
     return () => {
       subscription.unsubscribe();
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      clearTimeout(timeoutRef.current);
     };
-  }, [navigate]);
+  }, [navigate, isRedirecting]);
 
   if (error) {
     return (
