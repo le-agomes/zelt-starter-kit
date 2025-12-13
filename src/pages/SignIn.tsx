@@ -109,25 +109,28 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-6 py-16 pb-24 md:pb-16">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
-          <CardDescription>
+    <div className="flex min-h-screen items-center justify-center px-4 py-12 bg-muted/30">
+      <Card className="w-full max-w-sm shadow-md">
+        <CardHeader className="space-y-1 text-center pb-2">
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
+            HR
+          </div>
+          <CardTitle className="text-lg">Sign In</CardTitle>
+          <CardDescription className="text-xs">
             Choose your preferred sign-in method
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 pt-2">
           <Tabs value={authMethod} onValueChange={(v) => setAuthMethod(v as 'magic-link' | 'password')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="magic-link">Magic Link</TabsTrigger>
-              <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-8">
+              <TabsTrigger value="magic-link" className="text-xs">Magic Link</TabsTrigger>
+              <TabsTrigger value="password" className="text-xs">Password</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="magic-link">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-magic">Email</Label>
+            <TabsContent value="magic-link" className="mt-3">
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email-magic" className="text-xs">Email</Label>
                   <Input
                     id="email-magic"
                     type="email"
@@ -135,12 +138,11 @@ export default function SignIn() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="h-12"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="h-12 w-full"
+                  className="w-full"
                   disabled={isLoading}
                 >
                   {isLoading ? 'Sending...' : 'Send magic link'}
@@ -148,10 +150,10 @@ export default function SignIn() {
               </form>
             </TabsContent>
             
-            <TabsContent value="password">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-password">Email</Label>
+            <TabsContent value="password" className="mt-3">
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email-password" className="text-xs">Email</Label>
                   <Input
                     id="email-password"
                     type="email"
@@ -159,11 +161,10 @@ export default function SignIn() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="h-12"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password" className="text-xs">Password</Label>
                   <Input
                     id="password"
                     type="password"
@@ -172,12 +173,11 @@ export default function SignIn() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="h-12"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="h-12 w-full"
+                  className="w-full"
                   disabled={isLoading}
                 >
                   {isLoading ? 'Signing in...' : 'Sign in'}
@@ -185,28 +185,6 @@ export default function SignIn() {
               </form>
             </TabsContent>
           </Tabs>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Development Only
-              </span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="h-12 w-full"
-            onClick={handleQuickDevLogin}
-            disabled={isLoading}
-          >
-            <Badge variant="secondary" className="mr-2">DEV</Badge>
-            Quick Dev Login (Testing)
-          </Button>
         </CardContent>
       </Card>
     </div>

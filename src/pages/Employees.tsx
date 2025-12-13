@@ -156,7 +156,7 @@ export default function Employees() {
       />
 
       {/* Search and Filters */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -166,7 +166,7 @@ export default function Employees() {
               setSearchQuery(e.target.value);
               handleFilterChange();
             }}
-            className="pl-9 h-11 bg-card border-border"
+            className="pl-9 bg-card border-border"
           />
         </div>
 
@@ -176,8 +176,8 @@ export default function Employees() {
               setStatusFilter(value);
               handleFilterChange();
             }}>
-              <SelectTrigger className="h-10 bg-card border-border">
-                <Filter className="h-4 w-4 mr-2" />
+              <SelectTrigger className="bg-card border-border">
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -197,8 +197,8 @@ export default function Employees() {
               setDepartmentFilter(value);
               handleFilterChange();
             }}>
-              <SelectTrigger className="h-10 bg-card border-border">
-                <Filter className="h-4 w-4 mr-2" />
+              <SelectTrigger className="bg-card border-border">
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
@@ -215,29 +215,29 @@ export default function Employees() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
           <Card className="border-border">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-semibold text-foreground">
+            <CardContent className="p-3 text-center">
+              <div className="text-lg font-semibold text-foreground">
                 {isLoading ? '—' : stats.total}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Total</div>
+              <div className="text-[10px] text-muted-foreground">Total</div>
             </CardContent>
           </Card>
           <Card className="border-border">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-semibold text-foreground">
+            <CardContent className="p-3 text-center">
+              <div className="text-lg font-semibold text-foreground">
                 {isLoading ? '—' : stats.active}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Active</div>
+              <div className="text-[10px] text-muted-foreground">Active</div>
             </CardContent>
           </Card>
           <Card className="border-border">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-semibold text-foreground">
+            <CardContent className="p-3 text-center">
+              <div className="text-lg font-semibold text-foreground">
                 {isLoading ? '—' : stats.onLeave}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">On Leave</div>
+              <div className="text-[10px] text-muted-foreground">On Leave</div>
             </CardContent>
           </Card>
         </div>
@@ -260,41 +260,38 @@ export default function Employees() {
           </Card>
         ) : (
           <>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {paginatedEmployees.map((employee) => (
                 <Link key={employee.id} to={`/app/employees/${employee.id}`}>
-                  <Card className="border-border transition-colors hover:bg-accent/5 active:bg-accent/10">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12 border-2 border-border">
-                          <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                  <Card className="border-border transition-all duration-200 hover:bg-accent/5 hover:shadow-sm active:bg-accent/10">
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar className="h-9 w-9 border border-border">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
                             {getInitials(employee.full_name)}
                           </AvatarFallback>
                         </Avatar>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-foreground truncate">
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="text-sm font-medium text-foreground truncate">
                               {employee.full_name}
                             </h3>
                             {employee.status !== 'active' && (
                               <Badge 
                                 variant={employee.status === 'on_leave' ? 'secondary' : 'outline'}
-                                className="text-xs shrink-0"
+                                className="text-[10px] px-1.5 py-0 h-4 shrink-0"
                               >
                                 {getStatusLabel(employee.status)}
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {employee.job_title || 'No title'}
-                          </p>
-                          <p className="text-xs text-muted-foreground/80 truncate mt-0.5">
-                            {employee.department || 'No department'}
+                          <p className="text-xs text-muted-foreground truncate">
+                            {employee.job_title || 'No title'} · {employee.department || 'No department'}
                           </p>
                         </div>
 
-                        <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
                     </CardContent>
                   </Card>
