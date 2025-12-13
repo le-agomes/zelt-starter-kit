@@ -39,6 +39,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       if (error) throw error;
       return data;
     },
+    staleTime: 60000,
   });
 
   const { data: messages, isLoading, isFetching } = useQuery({
@@ -65,7 +66,8 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       if (error) throw error;
       return data;
     },
-    refetchInterval: 3000,
+    staleTime: 10000,
+    refetchInterval: 5000,
     refetchIntervalInBackground: false,
   });
 

@@ -45,35 +45,40 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return data;
     },
     enabled: !!user?.id,
-    refetchInterval: 5000,
+    staleTime: 30000,
+    refetchInterval: 10000,
     refetchIntervalInBackground: false,
   });
 
-  // Get unread counts for each conversation
+  // Get unread counts with single query (fix N+1 problem)
   const { data: unreadCounts } = useQuery({
     queryKey: ['chat-unread-counts', user?.id, conversations?.map(c => c.id)],
     queryFn: async () => {
       if (!conversations?.length) return {};
       
-      const counts: Record<string, number> = {};
+      const conversationIds = conversations.map(c => c.id);
       
-      for (const conv of conversations) {
-        const { count, error } = await supabase
-          .from('chat_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', conv.id)
-          .eq('read', false)
-          .neq('sender_id', user?.id || '');
-        
-        if (!error && count) {
-          counts[conv.id] = count;
-        }
-      }
+      // Single query to get all unread messages
+      const { data: unreadMessages, error } = await supabase
+        .from('chat_messages')
+        .select('conversation_id')
+        .in('conversation_id', conversationIds)
+        .eq('read', false)
+        .neq('sender_id', user?.id || '');
+      
+      if (error) return {};
+      
+      // Aggregate counts in JavaScript
+      const counts: Record<string, number> = {};
+      unreadMessages?.forEach(msg => {
+        counts[msg.conversation_id] = (counts[msg.conversation_id] || 0) + 1;
+      });
       
       return counts;
     },
     enabled: !!user?.id && !!conversations?.length,
-    refetchInterval: 5000,
+    staleTime: 30000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: false,
   });
 
