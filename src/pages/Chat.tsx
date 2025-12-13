@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { PageContent } from '@/components/PageContent';
 import { ConversationList } from '@/components/ConversationList';
@@ -8,7 +8,23 @@ import { MessageSquare } from 'lucide-react';
 
 export default function Chat() {
   const { conversationId } = useParams();
+  const navigate = useNavigate();
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(conversationId);
+
+  // Sync state with URL params
+  useEffect(() => {
+    setSelectedConversationId(conversationId);
+  }, [conversationId]);
+
+  const handleSelectConversation = (id: string) => {
+    setSelectedConversationId(id);
+    navigate(`/app/chat/${id}`, { replace: true });
+  };
+
+  const handleBack = () => {
+    setSelectedConversationId(undefined);
+    navigate('/app/chat', { replace: true });
+  };
 
   return (
     <>
@@ -22,7 +38,7 @@ export default function Chat() {
           <div className={`${selectedConversationId ? 'hidden md:flex' : 'flex'} w-full md:w-96 flex-col border-r border-border`}>
             <ConversationList 
               selectedId={selectedConversationId}
-              onSelect={setSelectedConversationId}
+              onSelect={handleSelectConversation}
             />
           </div>
 
@@ -31,7 +47,7 @@ export default function Chat() {
             {selectedConversationId ? (
               <MessageThread 
                 conversationId={selectedConversationId}
-                onBack={() => setSelectedConversationId(undefined)}
+                onBack={handleBack}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">

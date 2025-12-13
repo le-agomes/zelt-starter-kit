@@ -45,6 +45,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
   const { data: messages, isLoading } = useQuery({
     queryKey: ['chat-messages', conversationId],
     queryFn: async () => {
+      console.log('[Chat] Fetching messages for conversation:', conversationId);
       const { data, error } = await supabase
         .from('chat_messages')
         .select(`
@@ -63,14 +64,19 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
         .eq('conversation_id', conversationId)
         .order('sent_at', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[Chat] Error fetching messages:', error);
+        throw error;
+      }
+      console.log('[Chat] Fetched', data?.length, 'messages');
       return data;
     },
-    staleTime: Infinity,
+    staleTime: 30000, // Allow refetch after 30s as fallback
   });
 
   // Realtime subscription for instant message updates
   useEffect(() => {
+    console.log('[Chat] Setting up realtime subscription for:', conversationId);
     const channel = supabase
       .channel(`messages-${conversationId}`)
       .on(
@@ -81,13 +87,17 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
           table: 'chat_messages',
           filter: `conversation_id=eq.${conversationId}`
         },
-        () => {
+        (payload) => {
+          console.log('[Chat] Realtime event received:', payload.eventType);
           queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Chat] Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('[Chat] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [conversationId, queryClient]);
@@ -121,7 +131,12 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
   const handleSendMessage = async () => {
     if (!messageText.trim() || isSending) return;
 
+    const textToSend = messageText.trim();
+    setMessageText(''); // Clear immediately for better UX
     setIsSending(true);
+    
+    console.log('[Chat] Sending message:', textToSend.substring(0, 50));
+    
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -129,23 +144,37 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
         .eq('id', user?.id)
         .single();
 
-      const { error } = await supabase
+      if (!profile?.org_id) {
+        throw new Error('Could not determine organization');
+      }
+
+      const { data: insertedMessage, error } = await supabase
         .from('chat_messages')
         .insert({
           conversation_id: conversationId,
-          org_id: profile?.org_id,
+          org_id: profile.org_id,
           sender_id: user?.id,
           sender_type: ['admin', 'hr'].includes(profile?.role) ? 'hr' : 'employee',
-          message_text: messageText.trim(),
+          message_text: textToSend,
           message_type: 'text',
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Chat] Error sending message:', error);
+        setMessageText(textToSend); // Restore text on error
+        throw error;
+      }
 
-      setMessageText('');
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
+      console.log('[Chat] Message sent successfully:', insertedMessage?.id);
+      
+      // Force immediate refetch to show the message
+      await queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      
     } catch (error: any) {
+      console.error('[Chat] Send message error:', error);
       toast.error('Failed to send message: ' + error.message);
     } finally {
       setIsSending(false);
@@ -201,28 +230,30 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
 
       {/* Input */}
       <div className="pt-4 border-t border-border">
-        <div className="flex gap-2">
-          <Textarea
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            className="min-h-[60px] resize-none"
-            disabled={isSending}
-          />
-          <Button
-            onClick={handleSendMessage}
-            disabled={!messageText.trim() || isSending}
-            size="icon"
-            className="h-[60px] w-[60px]"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
+          <div className="flex gap-2">
+            <Textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className="min-h-[60px] resize-none"
+              disabled={isSending}
+            />
+            <Button
+              type="submit"
+              disabled={!messageText.trim() || isSending}
+              size="icon"
+              className="h-[60px] w-[60px]"
+            >
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
