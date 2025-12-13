@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,12 +25,11 @@ const getInitials = (name: string) => {
 
 export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['chat-conversations', user?.id],
     queryFn: async () => {
-      // RLS policy handles access control - it checks hr_user_id, employee_profile_id, 
-      // AND employees.profile_id, so we don't need to filter here
       const { data, error } = await supabase
         .from('chat_conversations')
         .select(`
@@ -45,12 +45,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return data;
     },
     enabled: !!user?.id,
-    staleTime: 30000,
-    refetchInterval: 10000,
-    refetchIntervalInBackground: false,
+    staleTime: Infinity,
   });
 
-  // Get unread counts with single query (fix N+1 problem)
+  // Get unread counts with single query
   const { data: unreadCounts } = useQuery({
     queryKey: ['chat-unread-counts', user?.id, conversations?.map(c => c.id)],
     queryFn: async () => {
@@ -58,7 +56,6 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       
       const conversationIds = conversations.map(c => c.id);
       
-      // Single query to get all unread messages
       const { data: unreadMessages, error } = await supabase
         .from('chat_messages')
         .select('conversation_id')
@@ -68,7 +65,6 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       
       if (error) return {};
       
-      // Aggregate counts in JavaScript
       const counts: Record<string, number> = {};
       unreadMessages?.forEach(msg => {
         counts[msg.conversation_id] = (counts[msg.conversation_id] || 0) + 1;
@@ -77,10 +73,42 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return counts;
     },
     enabled: !!user?.id && !!conversations?.length,
-    staleTime: 30000,
-    refetchInterval: 15000,
-    refetchIntervalInBackground: false,
+    staleTime: Infinity,
   });
+
+  // Realtime subscription for instant updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('conversations-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_conversations'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+          queryClient.invalidateQueries({ queryKey: ['chat-unread-counts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   if (isLoading) {
     return (
