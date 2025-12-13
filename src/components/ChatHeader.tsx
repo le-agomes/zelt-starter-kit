@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { SendFormRequestDialog } from '@/components/SendFormRequestDialog';
 import { Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ChatHeaderProps {
@@ -12,6 +12,7 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ conversation }: ChatHeaderProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showSendFormDialog, setShowSendFormDialog] = useState(false);
 
   const { data: profile } = useQuery({
@@ -66,6 +67,8 @@ export function ChatHeader({ conversation }: ChatHeaderProps) {
           open={showSendFormDialog}
           onClose={() => setShowSendFormDialog(false)}
           onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+            queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
             setShowSendFormDialog(false);
           }}
         />
