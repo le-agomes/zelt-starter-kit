@@ -28,15 +28,16 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['chat-conversations', user?.id],
     queryFn: async () => {
+      // RLS policy handles access control - it checks hr_user_id, employee_profile_id, 
+      // AND employees.profile_id, so we don't need to filter here
       const { data, error } = await supabase
         .from('chat_conversations')
         .select(`
           *,
-          employee:employees(id, full_name, email),
+          employee:employees(id, full_name, email, profile_id),
           hr_user:profiles!chat_conversations_hr_user_id_fkey(id, full_name),
           employee_profile:profiles!chat_conversations_employee_profile_id_fkey(id, full_name)
         `)
-        .or(`hr_user_id.eq.${user?.id},employee_profile_id.eq.${user?.id}`)
         .eq('archived', false)
         .order('last_message_at', { ascending: false });
       
