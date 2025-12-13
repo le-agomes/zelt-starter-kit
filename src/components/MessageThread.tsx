@@ -20,6 +20,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sendingRef = useRef(false); // Mutex to prevent double-sends
   const queryClient = useQueryClient();
 
   const { data: conversation } = useQuery({
@@ -128,14 +129,19 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     }
   }, [messages]);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
-    if (!messageText.trim() || isSending) return;
-
+    // Double-check using ref to prevent race conditions
+    if (sendingRef.current || !messageText.trim() || isSending) {
+      console.log('[Chat] Blocked duplicate send attempt');
+      return;
+    }
+    
+    sendingRef.current = true;
     const textToSend = messageText.trim();
     setMessageText(''); // Clear immediately for better UX
     setIsSending(true);
@@ -149,7 +155,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('org_id, role')
+        .select('org_id, role, full_name')
         .eq('id', user.id)
         .single();
 
@@ -161,6 +167,27 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       if (!profile?.org_id) {
         throw new Error('Could not determine organization');
       }
+
+      // Add optimistic message to cache immediately
+      const optimisticMessage = {
+        id: `temp-${Date.now()}`,
+        conversation_id: conversationId,
+        org_id: profile.org_id,
+        sender_id: user.id,
+        sender_type: ['admin', 'hr'].includes(profile?.role) ? 'hr' : 'employee',
+        message_text: textToSend,
+        message_type: 'text',
+        sent_at: new Date().toISOString(),
+        read: false,
+        read_at: null,
+        form_request_id: null,
+        sender: { id: user.id, full_name: profile?.full_name || 'You' },
+        form_request: null,
+      };
+
+      queryClient.setQueryData(['chat-messages', conversationId], (old: any[] | undefined) => 
+        [...(old || []), optimisticMessage]
+      );
 
       console.log('[Chat] Inserting message with org_id:', profile.org_id);
 
@@ -179,13 +206,17 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
 
       if (error) {
         console.error('[Chat] Insert error:', error);
+        // Remove optimistic message on error
+        queryClient.setQueryData(['chat-messages', conversationId], (old: any[] | undefined) => 
+          (old || []).filter(m => m.id !== optimisticMessage.id)
+        );
         setMessageText(textToSend); // Restore text on error
         throw error;
       }
 
       console.log('[Chat] Message sent successfully:', insertedMessage?.id);
       
-      // Force immediate refetch to show the message
+      // Force refetch to replace optimistic message with real one
       await queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
       
@@ -194,6 +225,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       toast.error('Failed to send message: ' + error.message);
     } finally {
       setIsSending(false);
+      sendingRef.current = false;
     }
   };
 
@@ -257,14 +289,11 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
               disabled={isSending}
             />
             <Button
-              type="submit"
+              type="button"
               disabled={!messageText.trim() || isSending}
               size="icon"
               className="h-[60px] w-[60px]"
-              onClick={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
+              onClick={handleSendMessage}
             >
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
