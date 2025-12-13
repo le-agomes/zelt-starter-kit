@@ -45,7 +45,8 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return data;
     },
     enabled: !!user?.id,
-    staleTime: Infinity,
+    staleTime: 30000,
+    refetchOnMount: true,
   });
 
   // Get unread counts with single query
@@ -73,7 +74,8 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return counts;
     },
     enabled: !!user?.id && !!conversations?.length,
-    staleTime: Infinity,
+    staleTime: 30000,
+    refetchOnMount: true,
   });
 
   // Realtime subscription for instant updates

@@ -128,7 +128,12 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     }
   }, [messages]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!messageText.trim() || isSending) return;
 
     const textToSend = messageText.trim();
@@ -138,22 +143,33 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     console.log('[Chat] Sending message:', textToSend.substring(0, 50));
     
     try {
-      const { data: profile } = await supabase
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('org_id, role')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
+
+      if (profileError) {
+        console.error('[Chat] Profile fetch error:', profileError);
+        throw new Error('Could not fetch user profile');
+      }
 
       if (!profile?.org_id) {
         throw new Error('Could not determine organization');
       }
+
+      console.log('[Chat] Inserting message with org_id:', profile.org_id);
 
       const { data: insertedMessage, error } = await supabase
         .from('chat_messages')
         .insert({
           conversation_id: conversationId,
           org_id: profile.org_id,
-          sender_id: user?.id,
+          sender_id: user.id,
           sender_type: ['admin', 'hr'].includes(profile?.role) ? 'hr' : 'employee',
           message_text: textToSend,
           message_type: 'text',
@@ -162,7 +178,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
         .single();
 
       if (error) {
-        console.error('[Chat] Error sending message:', error);
+        console.error('[Chat] Insert error:', error);
         setMessageText(textToSend); // Restore text on error
         throw error;
       }
@@ -230,7 +246,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
 
       {/* Input */}
       <div className="pt-4 border-t border-border">
-        <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
+        <form onSubmit={handleSendMessage}>
           <div className="flex gap-2">
             <Textarea
               value={messageText}
@@ -245,6 +261,10 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
               disabled={!messageText.trim() || isSending}
               size="icon"
               className="h-[60px] w-[60px]"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
             >
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
