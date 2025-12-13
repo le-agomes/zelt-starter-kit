@@ -98,19 +98,19 @@ export default function Dashboard() {
       <ProfileCompleteness />
 
       {/* Employee Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                <Users className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-2 text-muted-foreground">Active Employees</p>
+                <p className="text-xs text-muted-foreground">Active Employees</p>
                 {statsLoading ? (
-                  <Skeleton className="h-8 w-16 mt-1" />
+                  <Skeleton className="h-6 w-12 mt-0.5" />
                 ) : (
-                  <p className="text-6 font-semibold mt-1">{stats?.active || 0}</p>
+                  <p className="text-xl font-semibold mt-0.5">{stats?.active || 0}</p>
                 )}
               </div>
             </div>
@@ -118,17 +118,17 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
-                <UserPlus className="h-6 w-6 text-accent" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10">
+                <UserPlus className="h-4 w-4 text-accent" />
               </div>
               <div className="flex-1">
-                <p className="text-2 text-muted-foreground">Onboarding</p>
+                <p className="text-xs text-muted-foreground">Onboarding</p>
                 {statsLoading ? (
-                  <Skeleton className="h-8 w-16 mt-1" />
+                  <Skeleton className="h-6 w-12 mt-0.5" />
                 ) : (
-                  <p className="text-6 font-semibold mt-1">{stats?.onboarding || 0}</p>
+                  <p className="text-xl font-semibold mt-0.5">{stats?.onboarding || 0}</p>
                 )}
               </div>
             </div>
@@ -136,17 +136,17 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
-                <Calendar className="h-6 w-6 text-secondary-foreground" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary">
+                <Calendar className="h-4 w-4 text-secondary-foreground" />
               </div>
               <div className="flex-1">
-                <p className="text-2 text-muted-foreground">New This Month</p>
+                <p className="text-xs text-muted-foreground">New This Month</p>
                 {statsLoading ? (
-                  <Skeleton className="h-8 w-16 mt-1" />
+                  <Skeleton className="h-6 w-12 mt-0.5" />
                 ) : (
-                  <p className="text-6 font-semibold mt-1">{stats?.newThisMonth || 0}</p>
+                  <p className="text-xl font-semibold mt-0.5">{stats?.newThisMonth || 0}</p>
                 )}
               </div>
             </div>
@@ -154,75 +154,52 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Setup</CardTitle>
-              <CardDescription>
-                Finalize your account setup
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button onClick={handleFinalizeSetup} disabled={isLoading}>
-                {isLoading ? 'Processing...' : 'Finalize setup'}
-              </Button>
-              
-              {response && (
-                <div className="rounded-md bg-muted p-4">
-                  <p className="mb-2 text-sm font-medium">Response:</p>
-                  <pre className="overflow-auto text-xs">
-                    {JSON.stringify(response, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+      <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle>Overview</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 Your dashboard overview and quick stats
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 This is your main dashboard area. Add widgets and content here.
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle>Activity</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 Recent activity and updates
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Track your recent activities and notifications here.
               </p>
             </CardContent>
           </Card>
 
           <Card className="md:col-span-2">
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle>Getting Started</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 Tips to help you make the most of your dashboard
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-medium">1. Explore Features</h3>
-                <p className="text-sm text-muted-foreground">
-                  Navigate through different sections using the bottom navigation on mobile or top menu on desktop.
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">1. Explore Features</h3>
+                <p className="text-xs text-muted-foreground">
+                  Navigate through different sections using the sidebar on desktop or bottom navigation on mobile.
                 </p>
               </div>
-              <div className="space-y-2">
-                <h3 className="font-medium">2. Customize Your Experience</h3>
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">2. Customize Your Experience</h3>
+                <p className="text-xs text-muted-foreground">
                   Personalize your dashboard by adding widgets and adjusting settings.
                 </p>
               </div>

@@ -7,10 +7,10 @@ export function TopNav() {
   const { user, signOut } = useAuth();
 
   return (
-    <header className="border-b border-border bg-card">
-      <div className="container mx-auto flex h-16 items-center justify-between px-6">
-        <Link to="/" className="text-xl font-semibold text-foreground">
-          App
+    <header className="border-b border-border bg-card shadow-xs">
+      <div className="container mx-auto flex h-12 items-center justify-between px-4">
+        <Link to="/" className="text-base font-semibold text-foreground">
+          HR Platform
         </Link>
         
         {user && (
@@ -18,9 +18,9 @@ export function TopNav() {
             onClick={signOut}
             variant="ghost"
             size="sm"
-            className="gap-2"
+            className="gap-1.5 h-8 text-xs"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Sign Out</span>
           </Button>
         )}

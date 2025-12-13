@@ -236,16 +236,16 @@ export function NewEmployeeDialog() {
           New Employee
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add New Employee</DialogTitle>
-          <DialogDescription>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-base">Add New Employee</DialogTitle>
+          <DialogDescription className="text-xs">
             Enter the employee's information below
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
             <FormField
               control={form.control}
               name="full_name"
@@ -274,7 +274,7 @@ export function NewEmployeeDialog() {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="job_title"
@@ -318,7 +318,7 @@ export function NewEmployeeDialog() {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="start_date"
@@ -384,7 +384,7 @@ export function NewEmployeeDialog() {
               />
             </div>
 
-            <div className="border-t pt-4 space-y-4">
+            <div className="border-t pt-3 space-y-3">
               <FormField
                 control={form.control}
                 name="send_invitation"
@@ -438,7 +438,7 @@ export function NewEmployeeDialog() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-2 pt-3">
               <Button
                 type="button"
                 variant="outline"
