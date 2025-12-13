@@ -42,7 +42,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     staleTime: 60000,
   });
 
-  const { data: messages, isLoading, isFetching } = useQuery({
+  const { data: messages, isLoading } = useQuery({
     queryKey: ['chat-messages', conversationId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -66,10 +66,31 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       if (error) throw error;
       return data;
     },
-    staleTime: 10000,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: false,
+    staleTime: Infinity,
   });
+
+  // Realtime subscription for instant message updates
+  useEffect(() => {
+    const channel = supabase
+      .channel(`messages-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, queryClient]);
 
   // Mark messages as read when conversation is opened
   useEffect(() => {
