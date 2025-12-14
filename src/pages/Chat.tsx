@@ -4,12 +4,15 @@ import { PageHeader } from '@/components/PageHeader';
 import { PageContent } from '@/components/PageContent';
 import { ConversationList } from '@/components/ConversationList';
 import { MessageThread } from '@/components/MessageThread';
-import { MessageSquare } from 'lucide-react';
+import { NewChatDialog } from '@/components/NewChatDialog';
+import { Button } from '@/components/ui/button';
+import { MessageSquare, Plus } from 'lucide-react';
 
 export default function Chat() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(conversationId);
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
 
   // Sync state with URL params
   useEffect(() => {
@@ -28,10 +31,15 @@ export default function Chat() {
 
   return (
     <>
-      <PageHeader 
-        title="Chat" 
+      <PageHeader
+        title="Chat"
         description="Communicate with employees and send form requests"
-      />
+      >
+        <Button onClick={() => setShowNewChatDialog(true)} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Chat
+        </Button>
+      </PageHeader>
       <PageContent>
         <div className="flex h-[calc(100vh-12rem)] gap-4">
           {/* Conversation List - Left Panel */}
@@ -61,6 +69,11 @@ export default function Chat() {
           </div>
         </div>
       </PageContent>
+
+      <NewChatDialog
+        open={showNewChatDialog}
+        onOpenChange={setShowNewChatDialog}
+      />
     </>
   );
 }

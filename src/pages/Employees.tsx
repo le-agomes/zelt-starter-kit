@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, Filter, MessageSquare } from 'lucide-react';
 import { NewEmployeeDialog } from '@/components/NewEmployeeDialog';
+import { NewChatDialog } from '@/components/NewChatDialog';
 import { PageContent } from '@/components/PageContent';
 import { PageHeader } from '@/components/PageHeader';
 
@@ -63,6 +64,8 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>();
 
   // Fetch current user's role
   const { data: userProfile } = useQuery({
@@ -262,40 +265,50 @@ export default function Employees() {
           <>
             <div className="space-y-1.5">
               {paginatedEmployees.map((employee) => (
-                <Link key={employee.id} to={`/app/employees/${employee.id}`}>
-                  <Card className="border-border transition-all duration-200 hover:bg-accent/5 hover:shadow-sm active:bg-accent/10">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="h-9 w-9 border border-border">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                            {getInitials(employee.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <h3 className="text-sm font-medium text-foreground truncate">
-                              {employee.full_name}
-                            </h3>
-                            {employee.status !== 'active' && (
-                              <Badge 
-                                variant={employee.status === 'on_leave' ? 'secondary' : 'outline'}
-                                className="text-[10px] px-1.5 py-0 h-4 shrink-0"
-                              >
-                                {getStatusLabel(employee.status)}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {employee.job_title || 'No title'} · {employee.department || 'No department'}
-                          </p>
-                        </div>
+                <Card key={employee.id} className="border-border transition-all duration-200 hover:bg-accent/5 hover:shadow-sm active:bg-accent/10">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-9 w-9 border border-border">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                          {getInitials(employee.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
 
-                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      <Link to={`/app/employees/${employee.id}`} className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-sm font-medium text-foreground truncate">
+                            {employee.full_name}
+                          </h3>
+                          {employee.status !== 'active' && (
+                            <Badge
+                              variant={employee.status === 'on_leave' ? 'secondary' : 'outline'}
+                              className="text-[10px] px-1.5 py-0 h-4 shrink-0"
+                            >
+                              {getStatusLabel(employee.status)}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {employee.job_title || 'No title'} · {employee.department || 'No department'}
+                        </p>
+                      </Link>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 shrink-0 h-8 px-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedEmployeeId(employee.id);
+                          setShowNewChatDialog(true);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 
@@ -332,6 +345,15 @@ export default function Employees() {
           </>
         )}
       </div>
+
+      <NewChatDialog
+        open={showNewChatDialog}
+        onOpenChange={(open) => {
+          setShowNewChatDialog(open);
+          if (!open) setSelectedEmployeeId(undefined);
+        }}
+        preSelectedEmployeeId={selectedEmployeeId}
+      />
     </PageContent>
   );
 }
