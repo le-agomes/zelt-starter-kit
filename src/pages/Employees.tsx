@@ -11,9 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ChevronRight, ChevronLeft, Filter, MessageSquare } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, Filter } from 'lucide-react'; // MessageSquare temporarily hidden due to chat performance issues
 import { NewEmployeeDialog } from '@/components/NewEmployeeDialog';
-import { NewChatDialog } from '@/components/NewChatDialog';
+// import { NewChatDialog } from '@/components/NewChatDialog'; // Temporarily hidden due to chat performance issues
 import { PageContent } from '@/components/PageContent';
 import { PageHeader } from '@/components/PageHeader';
 
@@ -64,8 +64,8 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>();
+  // const [showNewChatDialog, setShowNewChatDialog] = useState(false); // Temporarily hidden due to chat performance issues
+  // const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(); // Temporarily hidden due to chat performance issues
 
   // Fetch current user's role
   const { data: userProfile } = useQuery({
@@ -293,6 +293,7 @@ export default function Employees() {
                         </p>
                       </Link>
 
+                      {/* Temporarily hidden due to chat performance issues
                       <Button
                         variant="ghost"
                         size="sm"
@@ -306,6 +307,7 @@ export default function Employees() {
                       >
                         <MessageSquare className="h-4 w-4" />
                       </Button>
+                      */}
                     </div>
                   </CardContent>
                 </Card>
@@ -346,6 +348,7 @@ export default function Employees() {
         )}
       </div>
 
+      {/* Temporarily hidden due to chat performance issues
       <NewChatDialog
         open={showNewChatDialog}
         onOpenChange={(open) => {
@@ -354,6 +357,7 @@ export default function Employees() {
         }}
         preSelectedEmployeeId={selectedEmployeeId}
       />
+      */}
     </PageContent>
   );
 }

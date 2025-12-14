@@ -27,7 +27,7 @@ import {
 import { PageContent } from '@/components/PageContent';
 import { StartRunDialog } from '@/components/StartRunDialog';
 import { SendFormRequestDialog } from '@/components/SendFormRequestDialog';
-import { NewChatDialog } from '@/components/NewChatDialog';
+// import { NewChatDialog } from '@/components/NewChatDialog'; // Temporarily hidden due to chat performance issues
 import {
   ArrowLeft,
   Edit,
@@ -38,7 +38,7 @@ import {
   EyeOff,
   User,
   Mail,
-  MessageSquare,
+  // MessageSquare, // Temporarily hidden due to chat performance issues
 } from 'lucide-react';
 
 const getInitials = (name: string) => {
@@ -108,7 +108,7 @@ export default function EmployeeDetail() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
   const [sendFormDialogOpen, setSendFormDialogOpen] = useState(false);
-  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  // const [showNewChatDialog, setShowNewChatDialog] = useState(false); // Temporarily hidden due to chat performance issues
   const [isEditing, setIsEditing] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -622,6 +622,7 @@ export default function EmployeeDetail() {
                       <Mail className="h-4 w-4 mr-2" />
                       Send Form
                     </Button>
+                    {/* Temporarily hidden due to chat performance issues
                     <Button
                       variant="default"
                       size="sm"
@@ -630,6 +631,7 @@ export default function EmployeeDetail() {
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Chat
                     </Button>
+                    */}
                   </>
                 )}
                 {canEditEmployee(userRole) && (
@@ -998,11 +1000,13 @@ export default function EmployeeDetail() {
         }}
       />
 
+      {/* Temporarily hidden due to chat performance issues
       <NewChatDialog
         open={showNewChatDialog}
         onOpenChange={setShowNewChatDialog}
         preSelectedEmployeeId={employee?.id}
       />
+      */}
     </>
   );
 }

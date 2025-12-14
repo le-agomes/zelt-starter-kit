@@ -17,7 +17,7 @@ import {
 const navItems = [
   { to: '/app/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/app/employees', icon: Users, label: 'Employees' },
-  { to: '/app/chat', icon: MessageSquare, label: 'Chat' },
+  // { to: '/app/chat', icon: MessageSquare, label: 'Chat' }, // Temporarily hidden due to performance issues
   { to: '/app/my-requests', icon: ClipboardList, label: 'My Requests' },
   { to: '/app/my-tasks', icon: CheckSquare, label: 'My Tasks' },
 ];
