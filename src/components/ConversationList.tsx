@@ -45,8 +45,9 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return data;
     },
     enabled: !!user?.id,
-    staleTime: 30000,
-    refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Get unread counts with single query
@@ -74,8 +75,9 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return counts;
     },
     enabled: !!user?.id && !!conversations?.length,
-    staleTime: 30000,
-    refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Realtime subscription for instant updates
@@ -89,8 +91,8 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
           schema: 'public',
           table: 'chat_conversations'
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+        async () => {
+          await queryClient.refetchQueries({ queryKey: ['chat-conversations'], exact: true });
         }
       )
       .on(
@@ -100,9 +102,9 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
           schema: 'public',
           table: 'chat_messages'
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
-          queryClient.invalidateQueries({ queryKey: ['chat-unread-counts'] });
+        async () => {
+          await queryClient.refetchQueries({ queryKey: ['chat-conversations'], exact: true });
+          await queryClient.refetchQueries({ queryKey: ['chat-unread-counts'], exact: true });
         }
       )
       .subscribe();

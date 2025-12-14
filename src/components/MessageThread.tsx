@@ -72,7 +72,9 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       console.log('[Chat] Fetched', data?.length, 'messages');
       return data;
     },
-    staleTime: 30000, // Allow refetch after 30s as fallback
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Realtime subscription for instant message updates
@@ -88,9 +90,9 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
           table: 'chat_messages',
           filter: `conversation_id=eq.${conversationId}`
         },
-        (payload) => {
+        async (payload) => {
           console.log('[Chat] Realtime event received:', payload.eventType);
-          queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
+          await queryClient.refetchQueries({ queryKey: ['chat-messages', conversationId], exact: true });
         }
       )
       .subscribe((status) => {
@@ -217,8 +219,8 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       console.log('[Chat] Message sent successfully:', insertedMessage?.id);
       
       // Force refetch to replace optimistic message with real one
-      await queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      await queryClient.refetchQueries({ queryKey: ['chat-messages', conversationId], exact: true });
+      await queryClient.refetchQueries({ queryKey: ['chat-conversations'], exact: true });
       
     } catch (error: any) {
       console.error('[Chat] Send message error:', error);
