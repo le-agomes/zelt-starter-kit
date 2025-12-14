@@ -53,13 +53,13 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
           *,
           sender:profiles!chat_messages_sender_id_fkey(id, full_name),
           form_request:form_requests(
-            id, 
-            status, 
+            id,
+            status,
             due_date,
             completed_at,
             employee_id,
             org_id,
-            form_template:form_templates(id, name, description, fields)
+            form_template:form_templates(id, name, description)
           )
         `)
         .eq('conversation_id', conversationId)
