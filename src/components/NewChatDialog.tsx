@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -123,11 +123,11 @@ export function NewChatDialog({ open, onOpenChange, preSelectedEmployeeId }: New
   });
 
   // Auto-start chat if preSelectedEmployeeId is provided
-  useState(() => {
+  useEffect(() => {
     if (preSelectedEmployeeId && open && profile?.org_id) {
       createConversationMutation.mutate(preSelectedEmployeeId);
     }
-  });
+  }, [preSelectedEmployeeId, open, profile?.org_id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

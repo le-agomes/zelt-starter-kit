@@ -52,21 +52,21 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       const { data, error } = await supabase
         .from('chat_messages')
         .select(`
-          *,
-          sender:profiles!chat_messages_sender_id_fkey(id, full_name),
-          form_request:form_requests(
-            id,
-            status,
-            due_date,
-            completed_at,
-            employee_id,
-            org_id,
-            form_template:form_templates(id, name, description)
-          )
+          id,
+          conversation_id,
+          sender_id,
+          sender_type,
+          message_text,
+          message_type,
+          sent_at,
+          read,
+          form_request_id,
+          sender:profiles!chat_messages_sender_id_fkey(id, full_name)
         `)
         .eq('conversation_id', conversationId)
-        .order('sent_at', { ascending: true });
-      
+        .order('sent_at', { ascending: true })
+        .limit(100);
+
       if (error) {
         console.error('[Chat] Error fetching messages:', error);
         throw error;
@@ -76,13 +76,15 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     },
     staleTime: 60000, // Cache data for 1 minute - instant return on tab switch
     gcTime: 300000, // Keep in memory for 5 minutes - survives unmounts
-    refetchOnMount: true, // Refetch in background but show cached data immediately
+    refetchOnMount: false, // Don't refetch on mount - rely on cache and realtime
     refetchOnWindowFocus: false, // Don't refetch when focusing window (realtime handles updates)
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!conversationId,
   });
 
   // Realtime subscription for instant message updates
   useEffect(() => {
+    if (!conversationId) return;
+
     console.log('[Chat] Setting up realtime subscription for:', conversationId);
     const channel = supabase
       .channel(`messages-${conversationId}`)
@@ -94,9 +96,10 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
           table: 'chat_messages',
           filter: `conversation_id=eq.${conversationId}`
         },
-        async (payload) => {
+        (payload) => {
           console.log('[Chat] Realtime event received:', payload.eventType);
-          await queryClient.refetchQueries({ queryKey: ['chat-messages', conversationId], exact: true });
+          // Don't await - let it happen in background
+          queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
         }
       )
       .subscribe((status) => {
@@ -221,10 +224,10 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       }
 
       console.log('[Chat] Message sent successfully:', insertedMessage?.id);
-      
-      // Force refetch to replace optimistic message with real one
-      await queryClient.refetchQueries({ queryKey: ['chat-messages', conversationId], exact: true });
-      await queryClient.refetchQueries({ queryKey: ['chat-conversations'], exact: true });
+
+      // Invalidate queries to trigger refetch in background
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
       
     } catch (error: any) {
       console.error('[Chat] Send message error:', error);
