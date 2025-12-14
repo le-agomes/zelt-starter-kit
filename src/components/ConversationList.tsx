@@ -45,9 +45,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return data;
     },
     enabled: !!user?.id,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 60000, // Cache for 1 minute - instant return
+    gcTime: 300000, // Keep in memory for 5 minutes
+    refetchOnMount: true, // Refetch in background, show cache immediately
+    refetchOnWindowFocus: false, // Realtime handles updates
   });
 
   // Get unread counts with single query
@@ -75,9 +76,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       return counts;
     },
     enabled: !!user?.id && !!conversations?.length,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 60000, // Cache unread counts
+    gcTime: 300000, // Keep in memory
+    refetchOnMount: true, // Refetch in background
+    refetchOnWindowFocus: false, // Realtime handles updates
   });
 
   // Realtime subscription for instant updates

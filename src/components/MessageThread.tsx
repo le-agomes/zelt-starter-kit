@@ -36,11 +36,12 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
         `)
         .eq('id', conversationId)
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     staleTime: 60000,
+    gcTime: 300000,
   });
 
   const { data: messages, isLoading } = useQuery({
@@ -72,9 +73,10 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
       console.log('[Chat] Fetched', data?.length, 'messages');
       return data;
     },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 60000, // Cache data for 1 minute - instant return on tab switch
+    gcTime: 300000, // Keep in memory for 5 minutes - survives unmounts
+    refetchOnMount: true, // Refetch in background but show cached data immediately
+    refetchOnWindowFocus: false, // Don't refetch when focusing window (realtime handles updates)
   });
 
   // Realtime subscription for instant message updates
