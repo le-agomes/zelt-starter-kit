@@ -42,6 +42,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     },
     staleTime: 60000,
     gcTime: 300000,
+    enabled: !!user?.id,
   });
 
   const { data: messages, isLoading } = useQuery({
@@ -77,6 +78,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     gcTime: 300000, // Keep in memory for 5 minutes - survives unmounts
     refetchOnMount: true, // Refetch in background but show cached data immediately
     refetchOnWindowFocus: false, // Don't refetch when focusing window (realtime handles updates)
+    enabled: !!user?.id,
   });
 
   // Realtime subscription for instant message updates
@@ -240,7 +242,7 @@ export function MessageThread({ conversationId, onBack }: MessageThreadProps) {
     }
   };
 
-  if (isLoading && !messages) {
+  if (!user?.id || (isLoading && !messages)) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
