@@ -27,6 +27,7 @@ import {
 import { PageContent } from '@/components/PageContent';
 import { StartRunDialog } from '@/components/StartRunDialog';
 import { SendFormRequestDialog } from '@/components/SendFormRequestDialog';
+import { NewChatDialog } from '@/components/NewChatDialog';
 import {
   ArrowLeft,
   Edit,
@@ -37,6 +38,7 @@ import {
   EyeOff,
   User,
   Mail,
+  MessageSquare,
 } from 'lucide-react';
 
 const getInitials = (name: string) => {
@@ -106,6 +108,7 @@ export default function EmployeeDetail() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [startRunDialogOpen, setStartRunDialogOpen] = useState(false);
   const [sendFormDialogOpen, setSendFormDialogOpen] = useState(false);
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -619,6 +622,14 @@ export default function EmployeeDetail() {
                       <Mail className="h-4 w-4 mr-2" />
                       Send Form
                     </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setShowNewChatDialog(true)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Chat
+                    </Button>
                   </>
                 )}
                 {canEditEmployee(userRole) && (
@@ -985,6 +996,12 @@ export default function EmployeeDetail() {
             description: 'Form request sent successfully',
           });
         }}
+      />
+
+      <NewChatDialog
+        open={showNewChatDialog}
+        onOpenChange={setShowNewChatDialog}
+        preSelectedEmployeeId={employee?.id}
       />
     </>
   );
